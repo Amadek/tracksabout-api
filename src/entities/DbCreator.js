@@ -1,7 +1,6 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
-const homedir = require('os').homedir();
 const mongodb = require('mongodb');
 const GridFsBucket = mongodb.GridFSBucket;
 const ObjectID = mongodb.ObjectID;
@@ -20,6 +19,18 @@ module.exports = class DbCreator {
           ]
         },
       ]
+    },
+    {
+      name: 'Queen',
+      albums: [
+        {
+          name: 'The Miracle',
+          tracks: [
+            { name: 'Party' },
+            { name: 'The Miracle' }
+          ]
+        }
+      ]
     }
   ];
 
@@ -29,11 +40,20 @@ module.exports = class DbCreator {
   }
 
   create () {
-    console.log('DbCreator.create() started.')
+    console.log('DbCreator.create() started.');
+    
+    const tracks = DbCreator.artists.map(a => a.albums.map(a => a.tracks)).flat(2);
+    const uploadTrackPromises = [];
 
-    return Promise.resolve()
-      .then(() => this._uploadTrack(path.join(homedir, 'jk.wav')))
-      .then(fileId => DbCreator.artists[0].albums[0].tracks[0].fileId = fileId)
+    for (const track of tracks) {
+      const uploadTrackPromise = Promise.resolve()
+        .then(() => this._uploadTrack(path.resolve('src/resources/fake.wav')))
+        .then(fileId => track.fileId = fileId);
+
+      uploadTrackPromises.push(uploadTrackPromise);
+    }
+
+    return Promise.all(uploadTrackPromises)
       .then(() => this._db.collection('artists').deleteMany({}))
       .then(() => this._db.collection('artists').insertMany(DbCreator.artists))
       .then(() => console.log("DbCreator.create() completed."))
@@ -63,7 +83,7 @@ module.exports = class DbCreator {
   }
 }
 
-// Script to join artists and track files (not perfect yet)
+// Script to join artists and track files
 // db.artists.aggregate([
 //   { $unwind: "$albums" }, { $unwind: "$albums.tracks" },
 //   {
@@ -72,8 +92,8 @@ module.exports = class DbCreator {
 //       from: 'tracks.files',
 //       localField: 'albums.tracks.fileId',
 //       foreignField: '_id',
-//       as: 'tracksWithFiles'
+//       as: 'albums.tracksWithFiles'
 //     }
 //   },
-//   { $unwind: '$tracksWithFiles' }
+//   { $unwind: '$albums.tracksWithFiles' }
 // ]).pretty()
