@@ -15,4 +15,4 @@ module.exports = class DbConnector {
   close () {
     this._mongoClient.close();
   }
-}
+};

@@ -19,7 +19,7 @@ module.exports = class DbCreator {
       .then(() => this._uploadTracks())
       .then(() => this._db.collection('artists').deleteMany({}))
       .then(() => this._db.collection('artists').insertMany(artists))
-      .then(() => console.log("DbCreator.create() completed."))
+      .then(() => console.log('DbCreator.create() completed.'))
       .then(() => this._db);
   }
 
@@ -30,7 +30,7 @@ module.exports = class DbCreator {
     for (const track of tracks) {
       const uploadTrackPromise = Promise.resolve()
         .then(() => this._uploadTrack(path.resolve('src/resources/fake.wav')))
-        .then(fileId => track.fileId = fileId);
+        .then(fileId => { track.fileId = fileId; });
 
       uploadTrackPromises.push(uploadTrackPromise);
     }
@@ -40,8 +40,8 @@ module.exports = class DbCreator {
 
   /**
    * Uploads file to mongo and returns fileId in promise.
-   * @param {string} trackPath 
-   * @param {string} trackFileName 
+   * @param {string} trackPath
+   * @param {string} trackFileName
    */
   _uploadTrack (trackPath) {
     const gridFsBucket = new GridFsBucket(this._db, { chunkSizeBytes: 1024, bucketName: 'tracks' });
@@ -59,7 +59,7 @@ module.exports = class DbCreator {
       });
     });
   }
-}
+};
 
 // Script to join artists and track files
 // db.artists.aggregate([
