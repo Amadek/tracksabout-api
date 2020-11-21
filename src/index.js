@@ -3,7 +3,7 @@ const DbCreator = require('./entities/DbCreator.js');
 
 const dbConnector = new DbConnector();
 
-return Promise.resolve()
+Promise.resolve()
   .then(() => dbConnector.connect())
   .then(db => new DbCreator(db).create())
   .then(db => db.collection('artists').find().toArray())
