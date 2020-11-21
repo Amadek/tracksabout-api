@@ -4,36 +4,9 @@ const path = require('path');
 const mongodb = require('mongodb');
 const GridFsBucket = mongodb.GridFSBucket;
 const ObjectID = mongodb.ObjectID;
+const artists = require('../resources/artists.json');
 
 module.exports = class DbCreator {
-  static artists = [
-    {
-      name: 'Yes',
-      albums: [
-        {
-          name: 'Close to the Edge',
-          tracks: [
-            { name: 'Close to the Edge' },
-            { name: 'And You and I' },
-            { name: 'Siberian Khatru' }
-          ]
-        },
-      ]
-    },
-    {
-      name: 'Queen',
-      albums: [
-        {
-          name: 'The Miracle',
-          tracks: [
-            { name: 'Party' },
-            { name: 'The Miracle' }
-          ]
-        }
-      ]
-    }
-  ];
-
   constructor (db) {
     assert.ok(db);
     this._db = db;
@@ -41,8 +14,17 @@ module.exports = class DbCreator {
 
   create () {
     console.log('DbCreator.create() started.');
-    
-    const tracks = DbCreator.artists.map(a => a.albums.map(a => a.tracks)).flat(2);
+
+    return Promise.resolve()
+      .then(() => this._uploadTracks())
+      .then(() => this._db.collection('artists').deleteMany({}))
+      .then(() => this._db.collection('artists').insertMany(artists))
+      .then(() => console.log("DbCreator.create() completed."))
+      .then(() => this._db);
+  }
+
+  _uploadTracks () {
+    const tracks = artists.map(a => a.albums.map(a => a.tracks)).flat(2);
     const uploadTrackPromises = [];
 
     for (const track of tracks) {
@@ -53,11 +35,7 @@ module.exports = class DbCreator {
       uploadTrackPromises.push(uploadTrackPromise);
     }
 
-    return Promise.all(uploadTrackPromises)
-      .then(() => this._db.collection('artists').deleteMany({}))
-      .then(() => this._db.collection('artists').insertMany(DbCreator.artists))
-      .then(() => console.log("DbCreator.create() completed."))
-      .then(() => this._db);
+    return Promise.all(uploadTrackPromises);
   }
 
   /**
