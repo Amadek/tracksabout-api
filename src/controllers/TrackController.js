@@ -2,11 +2,13 @@ const assert = require('assert');
 const { Router } = require('express');
 const TrackUploader = require('../entities/TrackUploader');
 const Busboy = require('busboy');
+const TrackParser = require('../entities/TrackParser');
 
 module.exports = class TrackController {
   constructor (db) {
     assert.ok(db);
     this._db = db;
+    this._trackParser = new TrackParser();
     this._trackUploader = new TrackUploader(db);
   }
 
@@ -26,13 +28,16 @@ module.exports = class TrackController {
 
     const busboy = new Busboy({ headers: req.headers });
     busboy
-      .on('file', (_fieldname, file, filename, _encoding) => {
+      .on('file', (_fieldname, file, filename, _encoding, mimetype) => {
         console.log(`TrackController:Busboy - file ${filename} stream begins.`);
         const readTrackStream = file;
-        const track = {};
         // Multiple files handling. Collects all upload track promises and waits for all of them on busboy.finish.
         // file event triggers on every file, but finish event triggers only once.
-        uploadTrackPromises.push(this._trackUploader.upload(readTrackStream, track));
+        const uploadTrackPromise = Promise.resolve()
+          .then(() => this._trackParser.parse(readTrackStream, mimetype))
+          .then(track => this._trackUploader.upload(readTrackStream, track));
+
+        uploadTrackPromises.push(uploadTrackPromise);
       })
       .on('finish', () => {
         console.log('TrackController:Busboy - file stream ends.');

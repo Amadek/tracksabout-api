@@ -14,14 +14,14 @@ module.exports = class TrackUploader {
     assert.ok(track);
 
     const trackFileName = new ObjectID().toHexString();
-    const uploadTrackStream = this._bucket.openUploadStream(trackFileName);
+    const uploadTrackStream = this._bucket.openUploadStream(trackFileName, { metadata: track });
 
     return new Promise((resolve, reject) => {
       uploadTrackStream
         .on('finish', () => {
-          track.fileId = uploadTrackStream.id;
-          console.log(`TrackUploader - Upload ends. File ${uploadTrackStream.id} uploaded to mongo.`);
-          resolve(track.fileId);
+          const trackFileId = uploadTrackStream.id;
+          console.log(`TrackUploader - Upload ends. File ${trackFileId} uploaded to mongo.`);
+          resolve(trackFileId);
         })
         .on('error', err => reject(err));
 
