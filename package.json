@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/Amadek/tracksabout-api#readme",
   "dependencies": {
+    "busboy": "^0.3.1",
     "express": "^4.17.1",
     "express-fileupload": "^1.2.0",
     "http-errors": "^1.7.2",
