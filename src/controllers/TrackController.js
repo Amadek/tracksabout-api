@@ -2,13 +2,13 @@ const assert = require('assert');
 const { Router } = require('express');
 const TrackUploader = require('../entities/TrackUploader');
 const Busboy = require('busboy');
-const TrackParser = require('../entities/TrackParser');
 
 module.exports = class TrackController {
-  constructor (db) {
+  constructor (db, trackParser) {
     assert.ok(db);
+    assert.ok(trackParser);
     this._db = db;
-    this._trackParser = new TrackParser();
+    this._trackParser = trackParser;
     this._trackUploader = new TrackUploader(db);
   }
 
