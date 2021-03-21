@@ -1,26 +1,26 @@
 const assert = require('assert');
 const mm = require('music-metadata');
-const util = require('util');
 
 module.exports = class TrackParser {
-  parse (readTrackStream, mimeType) {
-    console.log(`TrackParser - parsing begins. mimeType = ${mimeType}`);
-    assert.ok(readTrackStream);
-    assert.ok(mimeType);
+  parse (fileStream, mimetype) {
+    assert.ok(fileStream);
+    console.log(`TrackParser - parsing begins. mimeType = ${mimetype}`);
 
     return Promise.resolve()
-      .then(() => mm.parseStream(readTrackStream, { mimeType }))
+      .then(() => mm.parseStream(fileStream, { mimeType: mimetype }))
       .then(metadata => {
-        console.log(util.inspect(metadata, { showHidden: false, depth: null }));
+        console.debug(metadata);
         console.log('TrackParser - parsing ends.');
-
-        return {
-          artist: metadata.common.artist,
+        const parsedTrack = {
+          artistName: metadata.common.artist,
           title: metadata.common.title,
-          album: metadata.common.album,
+          albumName: metadata.common.album,
           year: metadata.common.year,
-          mimeType: mimeType
+          mimetype: mimetype,
+          fileStream: fileStream
         };
+
+        return parsedTrack;
       });
   }
 };

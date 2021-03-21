@@ -8,24 +8,39 @@ module.exports = class TrackUploader {
     this._bucket = new GridFSBucket(this._db, { chunkSizeBytes: 1024, bucketName: 'tracks' });
   }
 
-  upload (readTrackStream, track) {
+  upload (parsedTrack) {
     console.log('TrackUploader - Upload begins.');
-    assert.ok(readTrackStream);
-    assert.ok(track);
+    assert.ok(parsedTrack);
 
+    const trackMetadata = this._getTrackMetadata(parsedTrack);
+    return this._uploadTrack(parsedTrack.fileStream, trackMetadata);
+  }
+
+  _getTrackMetadata (parsedTrack) {
+    return {
+      artistName: parsedTrack.artistName,
+      title: parsedTrack.title,
+      albumName: parsedTrack.albumName,
+      year: parsedTrack.year,
+      mimeType: parsedTrack.mimetype
+    };
+  }
+
+  _uploadTrack (trackStream, trackMetadata) {
     const trackFileName = new ObjectID().toHexString();
-    const uploadTrackStream = this._bucket.openUploadStream(trackFileName, { metadata: track });
+    const uploadTrackStream = this._bucket.openUploadStream(trackFileName, { metadata: trackMetadata });
 
     return new Promise((resolve, reject) => {
       uploadTrackStream
         .on('finish', () => {
-          const trackFileId = uploadTrackStream.id;
-          console.log(`TrackUploader - Upload ends. File ${trackFileId} uploaded to mongo.`);
-          resolve(trackFileId);
+          const uploadedTrack = trackMetadata;
+          uploadedTrack.id = uploadTrackStream.id;
+          console.log(`TrackUploader - Upload ends. File ${uploadedTrack.id} uploaded to mongo.`);
+          resolve(uploadedTrack);
         })
         .on('error', err => reject(err));
 
-      readTrackStream.pipe(uploadTrackStream);
+      trackStream.pipe(uploadTrackStream);
     });
   }
 };

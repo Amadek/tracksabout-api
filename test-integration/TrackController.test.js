@@ -1,43 +1,77 @@
 /* global describe it before */
 const express = require('express');
-const TrackController = require('../src/controllers/TrackController');
-const DbConnector = require('../src/entities/DbConnector.js');
 const request = require('supertest');
+const { ObjectID } = require('mongodb');
+const DbConnector = require('../src/entities/DbConnector.js');
+const TrackController = require('../src/controllers/TrackController');
+const TrackUploader = require('../src/entities/TrackUploader');
+const AritstHierarchyUpdater = require('../src/entities/ArtistHierarchyUpdater');
 
 describe('TrackController', () => {
-  let app;
-  before(done => {
-    Promise.resolve()
-      .then(() => new DbConnector().connect())
-      .then(db => {
-        app = express();
-        app.use('/', new TrackController(db, createTrackParser()).route());
-        done();
-      });
-  });
-
   describe('POST /', () => {
     it('should upload track to DB', done => {
-      request(app)
-        .post('/')
-        .set('Content-type', 'multipart/form-data')
-        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
-        .expect(200, done);
-    });
+      Promise.resolve()
+        .then(() => new DbConnector().connect())
+        .then(db => {
+          const app = express();
+          app.use('/', new TrackController(createTrackParser(), new TrackUploader(db), new AritstHierarchyUpdater(db)).route());
+          return app;
+        })
+        .then(app => {
+          request(app)
+            .post('/')
+            .set('Content-type', 'multipart/form-data')
+            .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+            .expect(200, done);
+        })
+        .catch(err => done(err));
+    }).timeout(5000);
+    it('should return BadRequest when track with specified name already exists', done => {
+      Promise.resolve()
+        .then(() => new DbConnector().connect())
+        .then(db => {
+          const app = express();
+          const trackParser = createTrackParser({
+            title: new ObjectID().toHexString(),
+            albumName: new ObjectID().toHexString(),
+            artistName: new ObjectID().toHexString()
+          });
+          app.use('/', new TrackController(trackParser, new TrackUploader(db), new AritstHierarchyUpdater(db)).route());
+          return app;
+        })
+        .then(app => {
+          return request(app)
+            .post('/')
+            .set('Content-type', 'multipart/form-data')
+            .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+            .expect(200)
+            .then(() => app);
+        })
+        .then(app => {
+          return request(app)
+            .post('/')
+            .set('Content-type', 'multipart/form-data')
+            .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+            .expect(400);
+        })
+        .then(() => done())
+        .catch(err => done(err));
+    }).timeout(5000);
   });
 });
 
 /**
- * We need to mock TrackParser beacause we cannot create file with metadata.
+ * We need to mock TrackParser because we cannot create file with metadata.
  */
-function createTrackParser () {
+function createTrackParser (trackBaseData) {
   return {
-    parse: () => ({
-      artist: 'artist',
-      title: 'title',
-      album: 'album',
+    parse: (fileStream, _mimetype) => Promise.resolve({
+      artistName: trackBaseData?.artistName ?? new ObjectID().toHexString(),
+      title: trackBaseData?.title ?? new ObjectID().toHexString(),
+      albumName: trackBaseData?.albumName ?? new ObjectID().toHexString(),
       year: 1998,
-      mimeType: 'audio/flac'
+      mimetype: 'audio/flac',
+      fileStream: fileStream
     })
   };
 }
