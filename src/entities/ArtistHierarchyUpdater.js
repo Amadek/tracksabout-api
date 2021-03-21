@@ -1,13 +1,16 @@
 const assert = require('assert');
 
 module.exports = class AritstHierarchyUpdater {
-  constructor (db) {
+  constructor (db, logger) {
     assert.ok(db);
+    assert.ok(logger);
     this._db = db;
+    this._logger = logger;
   }
 
   update (parsedTrack) {
     assert.ok(parsedTrack);
+    this._logger.log(this, 'Check artist hierarchy started.');
     return Promise.resolve()
       .then(() => this._db.collection('artists').countDocuments({ name: parsedTrack.artistName }))
       .then(artistsCount => {
@@ -23,12 +26,18 @@ module.exports = class AritstHierarchyUpdater {
           artist.albums.push(artistAlbum);
         }
 
-        if (artistAlbum.tracks.find(t => t.title === parsedTrack.title)) return { updated: false, message: 'Track with specified name already exists!' };
+        if (artistAlbum.tracks.find(t => t.title === parsedTrack.title)) {
+          this._logger.log(this, `Track with specified title ${artist.name} -> ${artistAlbum.name} -> ${parsedTrack.title} already exists, ending.`);
+          return { updated: false, message: 'Track with specified title already exists!' };
+        }
 
         artistAlbum.tracks.push(parsedTrack);
         return this._db.collection('artists')
           .updateOne({ name: artist.name }, { $set: artist })
-          .then(() => ({ updated: true, updatedArtist: artist, sourceTrack: parsedTrack }));
+          .then(() => {
+            this._logger.log(this, `artist ${artist._id} ${artist.name} created/updated.`);
+            return { updated: true, updatedArtist: artist, sourceTrack: parsedTrack };
+          });
       });
   }
 

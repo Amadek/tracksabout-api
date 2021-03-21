@@ -2,6 +2,7 @@
 const AritstHierarchyUpdater = require('../src/entities/ArtistHierarchyUpdater');
 const assert = require('assert');
 const { ObjectID } = require('mongodb');
+const Logger = require('../src/controllers/Logger');
 
 describe('ArtistHierarchyUpdater', () => {
   describe('update()', () => {
@@ -20,7 +21,7 @@ describe('ArtistHierarchyUpdater', () => {
           updateOne: (_filter, { $set }) => Promise.resolve($set)
         })
       };
-      const updater = new AritstHierarchyUpdater(db);
+      const updater = new AritstHierarchyUpdater(db, new Logger());
       // ACT
       updater.update(uploadedTrack)
         .then(result => {
@@ -54,7 +55,7 @@ describe('ArtistHierarchyUpdater', () => {
           updateOne: (_filter, { $set }) => Promise.resolve($set)
         })
       };
-      const updater = new AritstHierarchyUpdater(db);
+      const updater = new AritstHierarchyUpdater(db, new Logger());
       // ACT
       updater.update(uploadedTrack)
         .then(result => {
@@ -88,7 +89,7 @@ describe('ArtistHierarchyUpdater', () => {
           updateOne: (_filter, { $set }) => Promise.resolve($set)
         })
       };
-      const updater = new AritstHierarchyUpdater(db);
+      const updater = new AritstHierarchyUpdater(db, new Logger());
       // ACT
       updater.update(uploadedTrack)
         .then(result => {
@@ -122,7 +123,7 @@ describe('ArtistHierarchyUpdater', () => {
           updateOne: (_filter, { $set }) => Promise.resolve($set)
         })
       };
-      const updater = new AritstHierarchyUpdater(db);
+      const updater = new AritstHierarchyUpdater(db, new Logger());
       // ACT
       updater.update(uploadedTrack)
         .then(result => {

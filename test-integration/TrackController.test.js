@@ -1,4 +1,4 @@
-/* global describe it before */
+/* global describe it */
 const express = require('express');
 const request = require('supertest');
 const { ObjectID } = require('mongodb');
@@ -6,6 +6,7 @@ const DbConnector = require('../src/entities/DbConnector.js');
 const TrackController = require('../src/controllers/TrackController');
 const TrackUploader = require('../src/entities/TrackUploader');
 const AritstHierarchyUpdater = require('../src/entities/ArtistHierarchyUpdater');
+const Logger = require('../src/controllers/Logger');
 
 describe('TrackController', () => {
   describe('POST /', () => {
@@ -14,7 +15,7 @@ describe('TrackController', () => {
         .then(() => new DbConnector().connect())
         .then(db => {
           const app = express();
-          app.use('/', new TrackController(createTrackParser(), new TrackUploader(db), new AritstHierarchyUpdater(db)).route());
+          app.use('/', new TrackController(createTrackParser(), new TrackUploader(db, new Logger()), new AritstHierarchyUpdater(db, new Logger()), new Logger()).route());
           return app;
         })
         .then(app => {
@@ -36,7 +37,7 @@ describe('TrackController', () => {
             albumName: new ObjectID().toHexString(),
             artistName: new ObjectID().toHexString()
           });
-          app.use('/', new TrackController(trackParser, new TrackUploader(db), new AritstHierarchyUpdater(db)).route());
+          app.use('/', new TrackController(trackParser, new TrackUploader(db, new Logger()), new AritstHierarchyUpdater(db, new Logger()), new Logger()).route());
           return app;
         })
         .then(app => {
@@ -48,6 +49,11 @@ describe('TrackController', () => {
             .then(() => app);
         })
         .then(app => {
+          app.use((err, _req, res, _next) => {
+            // Suppressing 400 error in output.
+            if (err.status !== 400) console.error(err);
+            res.status(err.status).end();
+          });
           return request(app)
             .post('/')
             .set('Content-type', 'multipart/form-data')

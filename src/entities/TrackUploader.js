@@ -2,18 +2,21 @@ const assert = require('assert');
 const { GridFSBucket, ObjectID } = require('mongodb');
 
 module.exports = class TrackUploader {
-  constructor (db) {
+  constructor (db, logger) {
     assert.ok(db);
+    assert.ok(logger);
     this._db = db;
+    this._logger = logger;
     this._bucket = new GridFSBucket(this._db, { chunkSizeBytes: 1024, bucketName: 'tracks' });
   }
 
-  upload (parsedTrack) {
-    console.log('TrackUploader - Upload begins.');
+  upload (parsedTrack, trackStream) {
+    this._logger.log(this, 'Upload begins.');
     assert.ok(parsedTrack);
+    assert.ok(trackStream);
 
     const trackMetadata = this._getTrackMetadata(parsedTrack);
-    return this._uploadTrack(parsedTrack.fileStream, trackMetadata);
+    return this._uploadTrack(trackStream, trackMetadata);
   }
 
   _getTrackMetadata (parsedTrack) {
@@ -35,7 +38,7 @@ module.exports = class TrackUploader {
         .on('finish', () => {
           const uploadedTrack = trackMetadata;
           uploadedTrack.id = uploadTrackStream.id;
-          console.log(`TrackUploader - Upload ends. File ${uploadedTrack.id} uploaded to mongo.`);
+          this._logger.log(this, `Upload ends. File ${uploadedTrack.id} uploaded to mongo.`);
           resolve(uploadedTrack);
         })
         .on('error', err => reject(err));
