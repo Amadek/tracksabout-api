@@ -1,8 +1,13 @@
 const assert = require('assert');
 const mm = require('music-metadata');
+const ITrackParser = require('./ITrackParser');
 
-module.exports = class TrackParser {
+module.exports = class TrackParser extends ITrackParser {
+  /**
+   * @param {import('../controllers/Logger')} logger
+   */
   constructor (logger) {
+    super();
     assert.ok(logger);
     this._logger = logger;
   }

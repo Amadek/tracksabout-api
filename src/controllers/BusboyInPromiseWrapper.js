@@ -1,6 +1,9 @@
 const assert = require('assert');
 
 module.exports = class BusboyInPromiseWrapper {
+  /**
+   * @param {import('../controllers/Logger')} logger
+   */
   constructor (logger) {
     assert.ok(logger);
     this._logger = logger;
@@ -19,7 +22,7 @@ module.exports = class BusboyInPromiseWrapper {
           this._logger.log(this, `File from field = ${fieldname} (${filename}) stream begins.`);
           // Multiple files handling. Collects all upload track promises and waits for all of them on busboy.finish.
           // File event triggers on every file, but finish event triggers only once.
-          // Only one file stream is opened at once. We have to handle first file stream to move on to second file stream.
+          // Multiple file streams are handled concurrently!
           const fileStream = file;
           const promise = Promise.resolve()
             .then(() => readFileStream(fileStream, filename, mimetype))

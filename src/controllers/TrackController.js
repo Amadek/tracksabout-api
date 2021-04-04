@@ -6,6 +6,12 @@ const BusboyInPromiseWrapper = require('./BusboyInPromiseWrapper');
 const Logger = require('./Logger');
 
 module.exports = class TrackController {
+  /**
+   * @param {import('../entities/ITrackParser')} trackParser
+   * @param {import('../entities/TrackUploader')} trackUploader
+   * @param {import('../entities/ArtistHierarchyUpdater')} artistHierarchyUpdater
+   * @param {import('../controllers/Logger')} logger
+   */
   constructor (trackParser, trackUploader, artistHierarchyUpdater, logger) {
     assert.ok(trackParser);
     assert.ok(trackUploader);

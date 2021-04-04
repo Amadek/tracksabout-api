@@ -6,11 +6,12 @@ const TrackUploader = require('./entities/TrackUploader');
 const { NotFound } = require('http-errors');
 const AritstHierarchyUpdater = require('./entities/ArtistHierarchyUpdater');
 const Logger = require('./controllers/Logger');
+const Config = require('./Config');
 
-const dbConnector = new DbConnector();
+const config = new Config();
 
 Promise.resolve()
-  .then(() => dbConnector.connect())
+  .then(() => new DbConnector(config).connect())
   .then(dbClient => {
     const app = express();
     app.use(express.json());
@@ -25,5 +26,5 @@ Promise.resolve()
       logger.log('index', err);
       res.status(err.status).send(err.stack);
     });
-    app.listen(3000, () => logger.log('index', `Listening on ${3000}...`));
+    app.listen(3000, () => logger.log('index', `Listening on ${config.appPort}...`));
   });

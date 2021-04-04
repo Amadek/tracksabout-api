@@ -8,12 +8,14 @@ const TrackController = require('../src/controllers/TrackController');
 const TrackUploader = require('../src/entities/TrackUploader');
 const AritstHierarchyUpdater = require('../src/entities/ArtistHierarchyUpdater');
 const Logger = require('../src/controllers/Logger');
+const Config = require('../src/Config');
+const ITrackParser = require('../src/entities/ITrackParser');
 
 describe('TrackController', () => {
   describe('POST /', () => {
     it('should upload tracks to DB', async () => {
       // ARRANGE
-      const dbClient = await new DbConnector().connect();
+      const dbClient = await new DbConnector(new Config()).connect();
       const trackBaseData = {
         title: new ObjectID().toHexString(),
         albumName: new ObjectID().toHexString(),
@@ -46,7 +48,7 @@ describe('TrackController', () => {
 
     it('should return BadRequest when track with specified name already exists', async () => {
       // ARRANGE
-      const dbClient = await new DbConnector().connect();
+      const dbClient = await new DbConnector(new Config()).connect();
       const app = createApp(dbClient, {
         title: new ObjectID().toHexString(),
         albumName: new ObjectID().toHexString(),
@@ -70,7 +72,7 @@ describe('TrackController', () => {
     it('should return BadRequest when uploading duplicate tracks', async () => {
       // TODO trzeba zrobić lepszą obsługę błędów żeby przerwać operacje uplodowania pierwszego pliku.
       // ARRANGE
-      const dbClient = await new DbConnector().connect();
+      const dbClient = await new DbConnector(new Config()).connect();
       const app = createApp(dbClient, {
         title: new ObjectID().toHexString(),
         albumName: new ObjectID().toHexString(),
@@ -92,7 +94,8 @@ function createApp (dbClient, trackBaseData) {
   const app = express();
   const uploader = new TrackUploader(dbClient, new Logger());
   const updater = new AritstHierarchyUpdater(dbClient, new Logger());
-  const controller = new TrackController(createTrackParser(trackBaseData), uploader, updater, new Logger());
+  const parser = new TrackParserTest(trackBaseData);
+  const controller = new TrackController(parser, uploader, updater, new Logger());
   app.use('/', controller.route());
 
   const logger = new Logger();
@@ -107,14 +110,19 @@ function createApp (dbClient, trackBaseData) {
 /**
  * We need to mock TrackParser because we cannot create unique file with metadata every time when test starts.
  */
-function createTrackParser (trackBaseData) {
-  return {
-    parse: (_fileStream, _mimetype) => Promise.resolve({
-      artistName: trackBaseData?.artistName ?? new ObjectID().toHexString(),
-      title: trackBaseData?.title ?? new ObjectID().toHexString(),
-      albumName: trackBaseData?.albumName ?? new ObjectID().toHexString(),
+class TrackParserTest extends ITrackParser {
+  constructor (trackBaseData) {
+    super();
+    this._trackBaseData = trackBaseData;
+  }
+
+  parse (_fileStream, _mimetype) {
+    return {
+      artistName: this._trackBaseData?.artistName ?? new ObjectID().toHexString(),
+      title: this._trackBaseData?.title ?? new ObjectID().toHexString(),
+      albumName: this._trackBaseData?.albumName ?? new ObjectID().toHexString(),
       year: 1998,
       mimetype: 'audio/flac'
-    })
-  };
+    };
+  }
 }

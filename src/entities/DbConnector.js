@@ -1,15 +1,18 @@
 const { MongoClient } = require('mongodb');
+const assert = require('assert');
 
 module.exports = class DbConnector {
-  constructor () {
-    const uri = 'mongodb+srv://Amadek:Amadek@tracksabout.zicyv.mongodb.net/TracksAbout?retryWrites=true&w=majority';
-    this._mongoClient = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+  /**
+   * @param {import('../Config')} config
+   */
+  constructor (config) {
+    assert.ok(config);
+    this._mongoClient = new MongoClient(config.dbConnectionString, { useNewUrlParser: true, useUnifiedTopology: true });
   }
 
-  connect () {
-    return Promise.resolve()
-      .then(() => this._mongoClient.connect())
-      .then(client => client);
+  async connect () {
+    const dbClient = await this._mongoClient.connect();
+    return dbClient;
   }
 
   close () {

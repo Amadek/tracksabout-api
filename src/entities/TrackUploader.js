@@ -2,6 +2,10 @@ const assert = require('assert');
 const { GridFSBucket, ObjectID } = require('mongodb');
 
 module.exports = class TrackUploader {
+  /**
+   * @param {import('mongodb').MongoClient} dbClient
+   * @param {import('../controllers/Logger')} logger
+   */
   constructor (dbClient, logger) {
     assert.ok(dbClient);
     assert.ok(logger);
@@ -22,7 +26,7 @@ module.exports = class TrackUploader {
     const updateTrackFileIdResult = await this._dbClient.db().collection('artists').updateMany(
       {},
       { $set: { 'albums.$[].tracks.$[track].fileId': uploadedTrackFileId } },
-      { multi: true, arrayFilters: [{ 'track._id': parsedTrack._id }] }
+      { arrayFilters: [{ 'track._id': parsedTrack._id }] }
     );
 
     this._logger.log(this, 'Update track file id result:\n' + JSON.stringify(updateTrackFileIdResult.result, null, 2));

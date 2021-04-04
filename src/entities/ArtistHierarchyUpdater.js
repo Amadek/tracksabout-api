@@ -1,7 +1,11 @@
 const assert = require('assert');
-const { ObjectID } = require('bson');
+const { ObjectID } = require('mongodb');
 
 module.exports = class AritstHierarchyUpdater {
+  /**
+   * @param {import('mongodb').MongoClient} dbClient
+   * @param {import('../controllers/Logger')} logger
+   */
   constructor (dbClient, logger) {
     assert.ok(dbClient);
     assert.ok(logger);
