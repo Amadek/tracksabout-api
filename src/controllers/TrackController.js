@@ -23,7 +23,7 @@ module.exports = class TrackController {
     return router;
   }
 
-  _postTrack (req, res, next) {
+  async _postTrack (req, res, next) {
     assert.ok(req);
     assert.ok(res);
     assert.ok(next);
@@ -31,21 +31,22 @@ module.exports = class TrackController {
     const busboyWrapper = new BusboyInPromiseWrapper(new Logger());
     Promise.resolve()
       .then(() => busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._uploadTrack.bind(this)))
-      .then(() => res.send('OK'))
+      .then(uploadedTrackIds => {
+        this._logger.log(this, `Returned fileIds = ${JSON.stringify(uploadedTrackIds)} of uploaded tracks.`);
+        return res.json(uploadedTrackIds);
+      })
       .catch(err => next(err));
   }
 
-  _uploadTrack (fileStream, _fileName, mimetype) {
+  async _uploadTrack (fileStream, _fileName, mimetype) {
     assert.ok(fileStream);
     assert.ok(mimetype);
 
-    return Promise.resolve()
-      .then(() => this._trackParser.parse(fileStream, mimetype))
-      .then(parsedTrack => this._artistHierarchyUpdater.update(parsedTrack))
-      .then(updateArtistResult => {
-        if (!updateArtistResult.updated) throw new BadRequest(updateArtistResult.message);
-        return updateArtistResult.sourceTrack;
-      })
-      .then(parsedTrack => this._trackUploader.upload(parsedTrack, fileStream));
+    const parsedTrack = await this._trackParser.parse(fileStream, mimetype);
+    const updateArtistResult = await this._artistHierarchyUpdater.update(parsedTrack);
+    if (!updateArtistResult.updated) throw new BadRequest(updateArtistResult.message);
+    const uploadedTrack = await this._trackUploader.upload(parsedTrack, fileStream);
+
+    return uploadedTrack.fileId;
   }
 };

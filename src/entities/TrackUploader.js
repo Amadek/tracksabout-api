@@ -2,21 +2,41 @@ const assert = require('assert');
 const { GridFSBucket, ObjectID } = require('mongodb');
 
 module.exports = class TrackUploader {
-  constructor (db, logger) {
-    assert.ok(db);
+  constructor (dbClient, logger) {
+    assert.ok(dbClient);
     assert.ok(logger);
-    this._db = db;
+    this._dbClient = dbClient;
     this._logger = logger;
-    this._bucket = new GridFSBucket(this._db, { chunkSizeBytes: 1024, bucketName: 'tracks' });
+    this._bucket = new GridFSBucket(this._dbClient.db(), { chunkSizeBytes: 1024, bucketName: 'tracks' });
   }
 
-  upload (parsedTrack, trackStream) {
+  async upload (parsedTrack, trackStream) {
     this._logger.log(this, 'Upload begins.');
     assert.ok(parsedTrack);
     assert.ok(trackStream);
 
     const trackMetadata = this._getTrackMetadata(parsedTrack);
-    return this._uploadTrack(trackStream, trackMetadata);
+    const uploadedTrackFileId = await this._uploadTrack(trackStream, trackMetadata);
+
+    // https://docs.mongodb.com/manual/reference/operator/update/positional-filtered/
+    const updateTrackFileIdResult = await this._dbClient.db().collection('artists').updateMany(
+      {},
+      { $set: { 'albums.$[].tracks.$[track].fileId': uploadedTrackFileId } },
+      { multi: true, arrayFilters: [{ 'track._id': parsedTrack._id }] }
+    );
+
+    this._logger.log(this, 'Update track file id result:\n' + JSON.stringify(updateTrackFileIdResult.result, null, 2));
+
+    const findTrackResult = await this._dbClient.db().collection('artists').aggregate([
+      { $unwind: '$albums' },
+      { $unwind: '$albums.tracks' },
+      { $match: { 'albums.tracks._id': parsedTrack._id } },
+      { $project: { track: '$albums.tracks', _id: 0 } }
+    ]).next();
+
+    this._logger.log(this, 'Track with updated fileId:\n' + JSON.stringify(findTrackResult.track, null, 2));
+
+    return findTrackResult.track;
   }
 
   _getTrackMetadata (parsedTrack) {
@@ -36,10 +56,9 @@ module.exports = class TrackUploader {
     return new Promise((resolve, reject) => {
       uploadTrackStream
         .on('finish', () => {
-          const uploadedTrack = trackMetadata;
-          uploadedTrack.id = uploadTrackStream.id;
-          this._logger.log(this, `Upload ends. File ${uploadedTrack.id} uploaded to mongo.`);
-          resolve(uploadedTrack);
+          const uploadedTrackFileId = uploadTrackStream.id;
+          this._logger.log(this, `Upload ends. Track with fileId = ${uploadedTrackFileId} uploaded to mongo.`);
+          resolve(uploadedTrackFileId);
         })
         .on('error', err => reject(err));
 

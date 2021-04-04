@@ -11,13 +11,13 @@ const dbConnector = new DbConnector();
 
 Promise.resolve()
   .then(() => dbConnector.connect())
-  .then(db => {
+  .then(dbClient => {
     const app = express();
     app.use(express.json());
     const logger = new Logger();
     const trackParser = new TrackParser(new Logger());
-    const trackUploader = new TrackUploader(db, new Logger());
-    const artistHierarchyUpdater = new AritstHierarchyUpdater(db, new Logger());
+    const trackUploader = new TrackUploader(dbClient, new Logger());
+    const artistHierarchyUpdater = new AritstHierarchyUpdater(dbClient, new Logger());
     app.use('/track', new TrackController(trackParser, trackUploader, artistHierarchyUpdater, new Logger()).route());
     // Any other route should throw Not Found.
     app.use((_req, _res, next) => next(new NotFound()));

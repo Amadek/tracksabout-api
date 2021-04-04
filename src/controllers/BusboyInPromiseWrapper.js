@@ -15,8 +15,8 @@ module.exports = class BusboyInPromiseWrapper {
       const readFileStreamPromises = [];
 
       busboy
-        .on('file', (_fieldname, file, filename, _encoding, mimetype) => {
-          this._logger.log(this, `File ${filename} stream begins.`);
+        .on('file', (fieldname, file, filename, _encoding, mimetype) => {
+          this._logger.log(this, `File from field = ${fieldname} (${filename}) stream begins.`);
           // Multiple files handling. Collects all upload track promises and waits for all of them on busboy.finish.
           // File event triggers on every file, but finish event triggers only once.
           // Only one file stream is opened at once. We have to handle first file stream to move on to second file stream.
@@ -28,7 +28,7 @@ module.exports = class BusboyInPromiseWrapper {
             //    Before file stream ends, if error occur there would be no error handling.
             //    Promise.all would not be created. Noone waits or catch errors in created Promise.
             // 2. When error is catched here, we need to return it to notify Promise.all to do nothing, because error is already handled.
-            .catch(err => { reject(err); return err; });
+            .catch(err => { this._logger.log(this, 'Error in file handler: ' + err.message); reject(err); return err; });
 
           readFileStreamPromises.push(promise);
         })
@@ -41,14 +41,20 @@ module.exports = class BusboyInPromiseWrapper {
                 err.occuredInFileReading = true;
                 throw err;
               }
+
+              return results;
             })
-            .then(() => resolve())
+            .then(results => resolve(results))
             .catch(err => {
-              console.log(err);
-              if (!err.occuredInFileReading) reject(err);
+              if (err.occuredInFileReading) return;
+              this._logger.log(this, 'Error in finish handler: ' + err.message);
+              reject(err);
             });
         })
-        .on('error', err => reject(err));
+        .on('error', err => {
+          this._logger.log(this, 'Error in error handler: ' + err.message);
+          reject(err);
+        });
 
       req.pipe(busboy);
     });

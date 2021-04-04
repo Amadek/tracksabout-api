@@ -9,7 +9,7 @@ module.exports = class DbConnector {
   connect () {
     return Promise.resolve()
       .then(() => this._mongoClient.connect())
-      .then(client => client.db());
+      .then(client => client);
   }
 
   close () {
