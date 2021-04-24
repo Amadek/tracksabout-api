@@ -10,6 +10,7 @@ const AritstHierarchyUpdater = require('../src/entities/ArtistHierarchyUpdater')
 const Logger = require('../src/controllers/Logger');
 const Config = require('../src/Config');
 const ITrackParser = require('../src/entities/ITrackParser');
+const TrackPresenceValidator = require('../src/entities/TrackPresenceValidator.js');
 
 describe('TrackController', () => {
   describe('POST /', () => {
@@ -88,6 +89,85 @@ describe('TrackController', () => {
         .expect(400);
     }).timeout(5000);
   });
+
+  describe('GET /validate', () => {
+    it('should return OK when track has not artist yet in database', async () => {
+      // ARANGE
+      const dbClient = await new DbConnector(new Config()).connect();
+      const app = createApp(dbClient, {
+        title: new ObjectID().toHexString(),
+        albumName: new ObjectID().toHexString(),
+        artistName: new ObjectID().toHexString()
+      });
+
+      // ACT, ASSERT
+      await request(app)
+        .get('/validate')
+        .set('Content-type', 'multipart/form-data')
+        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .expect(200);
+    });
+
+    it('should return OK when track has not artist\'s album yet in database', async () => {
+      // ARRANGE
+      const existingTrack = {
+        title: new ObjectID().toHexString(),
+        albumName: new ObjectID().toHexString(),
+        artistName: new ObjectID().toHexString()
+      };
+      const newTrack = {
+        title: new ObjectID().toHexString(),
+        albumName: existingTrack.albumName,
+        artistName: existingTrack.artistName
+      };
+      const dbClient = await new DbConnector(new Config()).connect();
+      let app = createApp(dbClient, existingTrack);
+
+      await request(app)
+        .post('/')
+        .set('Content-type', 'multipart/form-data')
+        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' });
+
+      app = createApp(dbClient, newTrack);
+
+      // ACT, ASSERT
+      await request(app)
+        .get('/validate')
+        .set('Content-type', 'multipart/form-data')
+        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .expect(200);
+    }).timeout(5000);
+
+    it('should return Bad Request when track already exists in artist\'s album in database', async () => {
+      // ARRANGE
+      const existingTrack = {
+        title: new ObjectID().toHexString(),
+        albumName: new ObjectID().toHexString(),
+        artistName: new ObjectID().toHexString()
+      };
+      const newTrack = {
+        title: existingTrack.title,
+        albumName: existingTrack.albumName,
+        artistName: existingTrack.artistName
+      };
+      const dbClient = await new DbConnector(new Config()).connect();
+      let app = createApp(dbClient, existingTrack);
+
+      await request(app)
+        .post('/')
+        .set('Content-type', 'multipart/form-data')
+        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' });
+
+      app = createApp(dbClient, newTrack);
+
+      // ACT, ASSERT
+      await request(app)
+        .get('/validate')
+        .set('Content-type', 'multipart/form-data')
+        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .expect(400);
+    }).timeout(5000);
+  });
 });
 
 function createApp (dbClient, trackBaseData) {
@@ -95,7 +175,8 @@ function createApp (dbClient, trackBaseData) {
   const uploader = new TrackUploader(dbClient, new Logger());
   const updater = new AritstHierarchyUpdater(dbClient, new Logger());
   const parser = new TrackParserTest(trackBaseData);
-  const controller = new TrackController(parser, uploader, updater, new Logger());
+  const validator = new TrackPresenceValidator(dbClient, new Logger());
+  const controller = new TrackController(parser, uploader, validator, updater, new Logger());
   app.use('/', controller.route());
 
   const logger = new Logger();

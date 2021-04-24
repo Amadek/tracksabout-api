@@ -3,7 +3,7 @@ const { ObjectID } = require('mongodb');
 
 module.exports = class AritstHierarchyUpdater {
   /**
-   * @param {import('mongodb').MongoClient} dbClient
+   * @param {any} dbClient
    * @param {import('../controllers/Logger')} logger
    */
   constructor (dbClient, logger) {

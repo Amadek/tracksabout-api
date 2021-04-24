@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "DEBUG=tracksabout-api:*,express:router node src/index.js",
-    "test": "mocha test-*/*.test.js"
+    "test": "mocha test-*/*.test.js",
+    "debug": "DEBUG=tracksabout-api:* mocha test-*/*.test.js"
   },
   "repository": {
     "type": "git",
