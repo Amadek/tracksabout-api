@@ -46,7 +46,17 @@ module.exports = class TrackController {
         this._logger.log(this, `Returned fileIds = ${JSON.stringify(uploadedTrackIds)} of uploaded tracks.`);
         return res.json(uploadedTrackIds);
       })
-      .catch(err => next(err));
+      .catch(err => {
+        const knownErrorMessages = [
+          'Multipart: Boundary not found',
+          'Missing Content-Type',
+          'Guessed MIME-type not supported'
+        ];
+
+        if (knownErrorMessages.some(errorMessage => err.message.includes(errorMessage))) return next(new BadRequest(err.message));
+
+        next(err);
+      });
   }
 
   /**
@@ -61,7 +71,7 @@ module.exports = class TrackController {
     assert.ok(next);
 
     Promise.resolve()
-      .then(() => this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._parseTrack.bind(this)))
+      .then(() => this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._parseTrackAndFinishStream.bind(this)))
       .then(([parsedTrack]) => this._trackPresenceValidator.validate(parsedTrack))
       .then(trackExists => {
         if (trackExists) throw new BadRequest('Track with specified title already exists!');
@@ -70,13 +80,11 @@ module.exports = class TrackController {
       .catch(err => next(err));
   }
 
-  async _parseTrack (fileStream, _fileName, mimetype) {
+  async _parseTrackAndFinishStream (fileStream, _fileName, mimetype) {
     assert.ok(fileStream);
     assert.ok(mimetype);
 
     const parsedTrack = await this._trackParser.parse(fileStream, mimetype);
-    // We do not need the stream any more so we are ending using it.
-    fileStream.resume();
     return parsedTrack;
   }
 
@@ -84,7 +92,7 @@ module.exports = class TrackController {
     assert.ok(fileStream);
     assert.ok(mimetype);
 
-    const parsedTrack = await this._parseTrack(fileStream, null, mimetype);
+    const parsedTrack = await this._trackParser.parse(fileStream, mimetype);
     const updateArtistResult = await this._artistHierarchyUpdater.update(parsedTrack);
     if (!updateArtistResult.updated) throw new BadRequest(updateArtistResult.message);
     const uploadedTrack = await this._trackUploader.upload(parsedTrack, fileStream);

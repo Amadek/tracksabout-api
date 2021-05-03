@@ -47,6 +47,21 @@ describe('TrackController', () => {
       assert.ok(artist.albums[0].tracks[0].fileId);
     }).timeout(5000);
 
+    it('should return BadRequest when no file was uploading', async () => {
+      // ARRANGE
+      const dbClient = await new DbConnector(new Config()).connect();
+      const app = createApp(dbClient, {
+        title: new ObjectID().toHexString(),
+        albumName: new ObjectID().toHexString(),
+        artistName: new ObjectID().toHexString()
+      });
+
+      // ACT, ASSERT
+      await request(app)
+        .post('/')
+        .expect(400);
+    }).timeout(5000);
+
     it('should return BadRequest when track with specified name already exists', async () => {
       // ARRANGE
       const dbClient = await new DbConnector(new Config()).connect();

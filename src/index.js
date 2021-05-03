@@ -16,17 +16,28 @@ Promise.resolve()
   .then(dbClient => {
     const app = express();
     app.use(express.json());
-    const logger = new Logger();
-    const trackParser = new TrackParser(new Logger());
-    const trackUploader = new TrackUploader(dbClient, new Logger());
-    const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
-    const artistHierarchyUpdater = new AritstHierarchyUpdater(dbClient, new Logger());
-    app.use('/track', new TrackController(trackParser, trackUploader, trackPresenceValidator, artistHierarchyUpdater, new Logger()).route());
+    app.use((_req, res, next) => {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+      next();
+    });
+    app.use('/track', createTrackController(dbClient).route());
     // Any other route should throw Not Found.
     app.use((_req, _res, next) => next(new NotFound()));
+
+    const indexLogger = new Logger();
     app.use((err, _req, res, _next) => {
-      logger.log('index', err);
-      res.status(err.status).send(err.stack);
+      indexLogger.log('index', err);
+      res.status(err.status ?? 500).json({ message: err.message });
     });
-    app.listen(3000, () => logger.log('index', `Listening on ${config.appPort}...`));
+    app.listen(config.appPort, () => indexLogger.log('index', `Listening on ${config.appPort}...`));
   });
+
+function createTrackController (dbClient) {
+  const trackParser = new TrackParser(new Logger());
+  const trackUploader = new TrackUploader(dbClient, new Logger());
+  const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
+  const artistHierarchyUpdater = new AritstHierarchyUpdater(dbClient, new Logger());
+
+  return new TrackController(trackParser, trackUploader, trackPresenceValidator, artistHierarchyUpdater, new Logger());
+}
