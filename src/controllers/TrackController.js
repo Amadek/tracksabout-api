@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { Router } = require('express');
-const { BadRequest } = require('http-errors');
+const { BadRequest, Conflict } = require('http-errors');
 const Busboy = require('busboy');
 const BusboyInPromiseWrapper = require('./BusboyInPromiseWrapper');
 const Logger = require('./Logger');
@@ -73,7 +73,12 @@ module.exports = class TrackController {
     try {
       const [parsedTrack] = await this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._parseTrackAndFinishStream.bind(this));
       const trackExists = await this._trackPresenceValidator.validate(parsedTrack);
-      if (trackExists) throw new BadRequest('Track with specified title already exists!');
+
+      if (trackExists) {
+        const confilctError = new Conflict('Track already exists!');
+        confilctError.additionalData = { parsedTrack };
+        throw confilctError;
+      }
 
       return res.json(parsedTrack);
     } catch (error) {

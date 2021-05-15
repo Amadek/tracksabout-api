@@ -28,7 +28,7 @@ Promise.resolve()
     const indexLogger = new Logger();
     app.use((err, _req, res, _next) => {
       indexLogger.log('index', err);
-      res.status(err.status ?? 500).json({ message: err.message });
+      res.status(err.status ?? 500).json({ message: err.message, additionalData: err.additionalData });
     });
     app.listen(config.appPort, () => indexLogger.log('index', `Listening on ${config.appPort}...`));
   });
