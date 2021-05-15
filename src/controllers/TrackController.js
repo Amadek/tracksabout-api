@@ -65,19 +65,20 @@ module.exports = class TrackController {
    * @param {import('express').Response} res
    * @param {import('express').NextFunction} next
    */
-  _validateTrack (req, res, next) {
+  async _validateTrack (req, res, next) {
     assert.ok(req);
     assert.ok(res);
     assert.ok(next);
 
-    Promise.resolve()
-      .then(() => this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._parseTrackAndFinishStream.bind(this)))
-      .then(([parsedTrack]) => this._trackPresenceValidator.validate(parsedTrack))
-      .then(trackExists => {
-        if (trackExists) throw new BadRequest('Track with specified title already exists!');
-        return res.send('OK');
-      })
-      .catch(err => next(err));
+    try {
+      const [parsedTrack] = await this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._parseTrackAndFinishStream.bind(this));
+      const trackExists = await this._trackPresenceValidator.validate(parsedTrack);
+      if (trackExists) throw new BadRequest('Track with specified title already exists!');
+
+      return res.json(parsedTrack);
+    } catch (error) {
+      next(error);
+    }
   }
 
   async _parseTrackAndFinishStream (fileStream, _fileName, mimetype) {

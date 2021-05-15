@@ -109,18 +109,24 @@ describe('TrackController', () => {
     it('should return OK when track has not artist yet in database', async () => {
       // ARANGE
       const dbClient = await new DbConnector(new Config()).connect();
-      const app = createApp(dbClient, {
+      const trackBaseData = {
         title: new ObjectID().toHexString(),
         albumName: new ObjectID().toHexString(),
         artistName: new ObjectID().toHexString()
-      });
+      };
+      const app = createApp(dbClient, trackBaseData);
 
       // ACT, ASSERT
-      await request(app)
+      const parsedTrack = await request(app)
         .get('/validate')
         .set('Content-type', 'multipart/form-data')
         .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
-        .expect(200);
+        .expect(200)
+        .then(({ body }) => body);
+
+      assert.strictEqual(parsedTrack.title, trackBaseData.title);
+      assert.strictEqual(parsedTrack.albumName, trackBaseData.albumName);
+      assert.strictEqual(parsedTrack.artistName, trackBaseData.artistName);
     });
 
     it('should return OK when track has not artist\'s album yet in database', async () => {
@@ -146,11 +152,16 @@ describe('TrackController', () => {
       app = createApp(dbClient, newTrack);
 
       // ACT, ASSERT
-      await request(app)
+      const parsedTrack = await request(app)
         .get('/validate')
         .set('Content-type', 'multipart/form-data')
         .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
-        .expect(200);
+        .expect(200)
+        .then(({ body }) => body);
+
+      assert.strictEqual(parsedTrack.title, newTrack.title);
+      assert.strictEqual(parsedTrack.albumName, newTrack.albumName);
+      assert.strictEqual(parsedTrack.artistName, newTrack.artistName);
     }).timeout(5000);
 
     it('should return Bad Request when track already exists in artist\'s album in database', async () => {
