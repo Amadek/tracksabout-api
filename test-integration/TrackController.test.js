@@ -105,7 +105,7 @@ describe('TrackController', () => {
     }).timeout(5000);
   });
 
-  describe('GET /validate', () => {
+  describe('POST /validate', () => {
     it('should return OK when track has not artist yet in database', async () => {
       // ARANGE
       const dbClient = await new DbConnector(new Config()).connect();
@@ -118,7 +118,7 @@ describe('TrackController', () => {
 
       // ACT, ASSERT
       const parsedTrack = await request(app)
-        .get('/validate')
+        .post('/validate')
         .set('Content-type', 'multipart/form-data')
         .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
         .expect(200)
@@ -153,7 +153,7 @@ describe('TrackController', () => {
 
       // ACT, ASSERT
       const parsedTrack = await request(app)
-        .get('/validate')
+        .post('/validate')
         .set('Content-type', 'multipart/form-data')
         .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
         .expect(200)
@@ -188,7 +188,7 @@ describe('TrackController', () => {
 
       // ACT, ASSERT
       await request(app)
-        .get('/validate')
+        .post('/validate')
         .set('Content-type', 'multipart/form-data')
         .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
         .expect(400);

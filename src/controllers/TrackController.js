@@ -25,7 +25,7 @@ module.exports = class TrackController {
   route () {
     const router = Router();
     router.post('/', this._postTrack.bind(this));
-    router.get('/validate', this._validateTrack.bind(this));
+    router.post('/validate', this._postValidateTrack.bind(this));
     return router;
   }
 
@@ -65,7 +65,7 @@ module.exports = class TrackController {
    * @param {import('express').Response} res
    * @param {import('express').NextFunction} next
    */
-  async _validateTrack (req, res, next) {
+  async _postValidateTrack (req, res, next) {
     assert.ok(req);
     assert.ok(res);
     assert.ok(next);
