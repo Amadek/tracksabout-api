@@ -1,23 +1,19 @@
 const assert = require('assert');
 const { Router } = require('express');
-const { BadRequest, Conflict } = require('http-errors');
+const { BadRequest } = require('http-errors');
 const Busboy = require('busboy');
 const BusboyInPromiseWrapper = require('./BusboyInPromiseWrapper');
 const Logger = require('./Logger');
 
 module.exports = class TrackController {
   /**
-   * @param {import('../entities/ITrackParser')} trackParser
-   * @param {import('../entities/TrackUploader')} trackUploader
-   * @param {import('../entities/TrackPresenceValidator')} trackPresenceValidator
-   * @param {import('../entities/ArtistHierarchyUpdater')} artistHierarchyUpdater
+   * @param {import('./BusboyStreamReaderToUploadTrack')} busboyStreamReaderToUploadTrack
+   * @param {import('./BusboyStreamReaderToValidateTrack')} busboyStreamReaderToValidateTrack
    * @param {import('../controllers/Logger')} logger
    */
-  constructor (trackParser, trackUploader, trackPresenceValidator, artistHierarchyUpdater, logger) {
-    assert.ok(trackParser); this._trackParser = trackParser;
-    assert.ok(trackUploader); this._trackUploader = trackUploader;
-    assert.ok(trackPresenceValidator); this._trackPresenceValidator = trackPresenceValidator;
-    assert.ok(artistHierarchyUpdater); this._artistHierarchyUpdater = artistHierarchyUpdater;
+  constructor (busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, logger) {
+    assert.ok(busboyStreamReaderToUploadTrack); this._busboyStreamReaderToUploadTrack = busboyStreamReaderToUploadTrack;
+    assert.ok(busboyStreamReaderToValidateTrack); this._busboyStreamReaderToValidateTrack = busboyStreamReaderToValidateTrack;
     assert.ok(logger); this._logger = logger;
     this._busboyWrapper = new BusboyInPromiseWrapper(new Logger());
   }
@@ -40,23 +36,22 @@ module.exports = class TrackController {
     assert.ok(res);
     assert.ok(next);
 
-    Promise.resolve()
-      .then(() => this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._uploadTrack.bind(this)))
-      .then(uploadedTrackIds => {
-        this._logger.log(this, `Returned fileIds = ${JSON.stringify(uploadedTrackIds)} of uploaded tracks.`);
-        return res.json(uploadedTrackIds);
-      })
-      .catch(err => {
-        const knownErrorMessages = [
-          'Multipart: Boundary not found',
-          'Missing Content-Type',
-          'Guessed MIME-type not supported'
-        ];
+    try {
+      const uploadedTrackIds = await this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._busboyStreamReaderToUploadTrack);
+      this._logger.log(this, `Returned fileIds = ${JSON.stringify(uploadedTrackIds)} of uploaded tracks.`);
 
-        if (knownErrorMessages.some(errorMessage => err.message.includes(errorMessage))) return next(new BadRequest(err.message));
+      return res.json(uploadedTrackIds);
+    } catch (error) {
+      const knownErrorMessages = [
+        'Multipart: Boundary not found',
+        'Missing Content-Type',
+        'Guessed MIME-type not supported'
+      ];
 
-        next(err);
-      });
+      if (knownErrorMessages.some(errorMessage => error.message.includes(errorMessage))) return next(new BadRequest(error.message));
+
+      next(error);
+    }
   }
 
   /**
@@ -71,38 +66,11 @@ module.exports = class TrackController {
     assert.ok(next);
 
     try {
-      const [parsedTrack] = await this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._parseTrackAndFinishStream.bind(this));
-      const trackExists = await this._trackPresenceValidator.validate(parsedTrack);
-
-      if (trackExists) {
-        const confilctError = new Conflict('Track already exists!');
-        confilctError.additionalData = { parsedTrack };
-        throw confilctError;
-      }
+      const [parsedTrack] = await this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._busboyStreamReaderToValidateTrack);
 
       return res.json(parsedTrack);
     } catch (error) {
       next(error);
     }
-  }
-
-  async _parseTrackAndFinishStream (fileStream, _fileName, mimetype) {
-    assert.ok(fileStream);
-    assert.ok(mimetype);
-
-    const parsedTrack = await this._trackParser.parse(fileStream, mimetype);
-    return parsedTrack;
-  }
-
-  async _uploadTrack (fileStream, _fileName, mimetype) {
-    assert.ok(fileStream);
-    assert.ok(mimetype);
-
-    const parsedTrack = await this._trackParser.parse(fileStream, mimetype);
-    const updateArtistResult = await this._artistHierarchyUpdater.update(parsedTrack);
-    if (!updateArtistResult.updated) throw new BadRequest(updateArtistResult.message);
-    const uploadedTrack = await this._trackUploader.upload(parsedTrack, fileStream);
-
-    return uploadedTrack.fileId;
   }
 };

@@ -8,6 +8,8 @@ const { NotFound } = require('http-errors');
 const AritstHierarchyUpdater = require('./entities/ArtistHierarchyUpdater');
 const Logger = require('./controllers/Logger');
 const Config = require('./Config');
+const BusboyStreamReaderToValidateTrack = require('./controllers/BusboyStreamReaderToValidateTrack');
+const BusboyStreamReaderToUploadTrack = require('./controllers/BusboyStreamReaderToUploadTrack');
 
 const config = new Config();
 
@@ -38,6 +40,8 @@ function createTrackController (dbClient) {
   const trackUploader = new TrackUploader(dbClient, new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
   const artistHierarchyUpdater = new AritstHierarchyUpdater(dbClient, new Logger());
+  const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
+  const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, artistHierarchyUpdater, trackUploader, new Logger());
 
-  return new TrackController(trackParser, trackUploader, trackPresenceValidator, artistHierarchyUpdater, new Logger());
+  return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, new Logger());
 }
