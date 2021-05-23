@@ -9,12 +9,12 @@ const TrackUploader = require('../src/entities/TrackUploader');
 const AritstHierarchyUpdater = require('../src/entities/ArtistHierarchyUpdater');
 const Logger = require('../src/controllers/Logger');
 const Config = require('../src/Config');
-const ITrackParser = require('../src/entities/ITrackParser');
 const TrackPresenceValidator = require('../src/entities/TrackPresenceValidator.js');
 const BusboyStreamReaderToValidateTrack = require('../src/controllers/BusboyStreamReaderToValidateTrack.js');
 const BusboyStreamReaderToUploadTrack = require('../src/controllers/BusboyStreamReaderToUploadTrack.js');
+const TrackParserTest = require('./TrackParserTest');
 
-describe.only('TrackController', () => {
+describe('TrackController', () => {
   describe('POST /', () => {
     it('should upload tracks to DB', async () => {
       // ARRANGE
@@ -225,24 +225,4 @@ function createApp (dbClient, trackBaseData) {
   });
 
   return app;
-}
-
-/**
- * We need to mock TrackParser because we cannot create unique file with metadata every time when test starts.
- */
-class TrackParserTest extends ITrackParser {
-  constructor (trackBaseData) {
-    super();
-    this._trackBaseData = trackBaseData;
-  }
-
-  parse (_fileStream, _mimetype) {
-    return {
-      artistName: this._trackBaseData?.artistName ?? new ObjectID().toHexString(),
-      title: this._trackBaseData?.title ?? new ObjectID().toHexString(),
-      albumName: this._trackBaseData?.albumName ?? new ObjectID().toHexString(),
-      year: 1998,
-      mimetype: 'audio/flac'
-    };
-  }
 }
