@@ -10,6 +10,8 @@ const Logger = require('./controllers/Logger');
 const Config = require('./Config');
 const BusboyStreamReaderToValidateTrack = require('./controllers/BusboyStreamReaderToValidateTrack');
 const BusboyStreamReaderToUploadTrack = require('./controllers/BusboyStreamReaderToUploadTrack');
+const Finder = require('./entities/Finder');
+const SearchController = require('./controllers/SearchController');
 
 const config = new Config();
 
@@ -24,6 +26,7 @@ Promise.resolve()
       next();
     });
     app.use('/track', createTrackController(dbClient).route());
+    app.use('/search', createSearchController(dbClient).route());
     // Any other route should throw Not Found.
     app.use((_req, _res, next) => next(new NotFound()));
 
@@ -44,4 +47,9 @@ function createTrackController (dbClient) {
   const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, artistHierarchyUpdater, trackUploader, new Logger());
 
   return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, new Logger());
+}
+
+function createSearchController (dbClient) {
+  const finder = new Finder(dbClient, new Logger());
+  return new SearchController(finder);
 }

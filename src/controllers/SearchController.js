@@ -1,18 +1,18 @@
 const assert = require('assert');
 const { Router } = require('express');
+const { BadRequest } = require('http-errors');
 
 module.exports = class SearchController {
   /**
-   * @param {import('../entities/TrackFinder')} trackFinder
+   * @param {import('../entities/Finder')} finder
    */
-  constructor (trackFinder) {
-    assert.ok(trackFinder); this._trackFinder = trackFinder;
+  constructor (finder) {
+    assert.ok(finder); this._finder = finder;
   }
 
   route () {
     const router = Router();
-    // Regex for search words with spaces, with 3 or more characters
-    router.post('/:phrase(\\w{3,}[\\w\\s]*)', this._postSearch.bind(this));
+    router.post('/:phrase', this._postSearch.bind(this));
     return router;
   }
 
@@ -28,8 +28,10 @@ module.exports = class SearchController {
     assert.ok(next);
 
     try {
+      if (!req.params.phrase || req.params.phrase.length < 3) throw new BadRequest('Search phrase is empty or too short!');
+
       const trackTitleRegexp = new RegExp(req.params.phrase);
-      const tracks = await this._trackFinder.find(trackTitleRegexp);
+      const tracks = await this._finder.find(trackTitleRegexp);
 
       return res.json(tracks);
     } catch (error) {
