@@ -75,6 +75,8 @@ describe(SearchController.name, () => {
         .then(({ body }) => ({ searchResults: body }));
 
       assert.strictEqual(searchResults.length, 2);
+      assert.ok(searchResults.find(t => t.trackTitle === searchTrackPhrase));
+      assert.ok(searchResults.find(t => t.trackTitle === trackBaseData.title));
     }).timeout(5000);
 
     it('should return albums', async () => {
@@ -110,6 +112,8 @@ describe(SearchController.name, () => {
         .then(({ body }) => ({ searchResults: body }));
 
       assert.strictEqual(searchResults.length, 2);
+      assert.ok(searchResults.find(a => a.albumName === searchAlbumPhrase));
+      assert.ok(searchResults.find(a => a.albumName === trackBaseData.albumName));
     }).timeout(5000);
 
     it('should return artists', async () => {
@@ -145,6 +149,8 @@ describe(SearchController.name, () => {
         .then(({ body }) => ({ searchResults: body }));
 
       assert.strictEqual(searchResults.length, 2);
+      assert.ok(searchResults.find(a => a.artistName === searchArtistPhrase));
+      assert.ok(searchResults.find(a => a.artistName === trackBaseData.artistName));
     }).timeout(5000);
   });
 });

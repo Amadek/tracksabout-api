@@ -55,7 +55,7 @@ module.exports = class Finder {
   async _findArtists (albumNameRegexp) {
     const artists = await this._dbClient.db().collection('artists').aggregate([
       { $match: { name: albumNameRegexp } },
-      { $project: { _id: 0, artistName: 'name' } }
+      { $project: { _id: 0, artistName: '$name' } }
     ]).toArray();
 
     return artists;
