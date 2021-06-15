@@ -12,12 +12,30 @@ const BusboyStreamReaderToValidateTrack = require('./Controllers/BusboyStreamRea
 const BusboyStreamReaderToUploadTrack = require('./Controllers/BusboyStreamReaderToUploadTrack');
 const Searcher = require('./Searcher/Searcher');
 const SearchController = require('./Controllers/SearchController');
+const https = require('https');
+const fs = require('fs/promises');
+const assert = require('assert');
 
-const config = new Config();
+class App {
+  constructor (dbConnector, config, logger) {
+    assert.ok(dbConnector); this._dbConnector = dbConnector;
+    assert.ok(config); this._config = config;
+    assert.ok(logger); this._logger = logger;
+  }
 
-Promise.resolve()
-  .then(() => new DbConnector(config).connect())
-  .then(dbClient => {
+  async run () {
+    const dbClient = await this._dbConnector.connect();
+    const expressApp = this._createExpressApp(dbClient);
+    const certFiles = await this._readCertFiles(this._config.certKeyPath, this._config.certFilePath);
+
+    https.createServer({
+      key: certFiles.key,
+      cert: certFiles.cert
+    }, expressApp)
+      .listen(config.appPort, () => this._logger.log(this, `Listening on HTTPS, port = ${config.appPort}...`));
+  }
+
+  _createExpressApp (dbClient) {
     const app = express();
     app.use(express.json());
     app.use((_req, res, next) => {
@@ -25,31 +43,46 @@ Promise.resolve()
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
       next();
     });
-    app.use('/track', createTrackController(dbClient).route());
-    app.use('/search', createSearchController(dbClient).route());
+    app.use('/track', this._createTrackController(dbClient).route());
+    app.use('/search', this._createSearchController(dbClient).route());
     // Any other route should throw Not Found.
     app.use((_req, _res, next) => next(new NotFound()));
 
     const indexLogger = new Logger();
     app.use((err, _req, res, _next) => {
-      indexLogger.log('index', err);
+      indexLogger.log(this, err);
       res.status(err.status ?? 500).json({ message: err.message, additionalData: err.additionalData });
     });
-    app.listen(config.appPort, () => indexLogger.log('index', `Listening on ${config.appPort}...`));
-  });
 
-function createTrackController (dbClient) {
-  const trackParser = new TrackParser(new Logger());
-  const trackUploader = new TrackUploader(dbClient, new Logger());
-  const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
-  const artistHierarchyUpdater = new AritstHierarchyUpdater(dbClient, new Logger());
-  const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
-  const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, artistHierarchyUpdater, trackUploader, new Logger());
+    return app;
+  }
 
-  return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, new Logger());
+  _createTrackController (dbClient) {
+    const trackParser = new TrackParser(new Logger());
+    const trackUploader = new TrackUploader(dbClient, new Logger());
+    const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
+    const artistHierarchyUpdater = new AritstHierarchyUpdater(dbClient, new Logger());
+    const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
+    const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, artistHierarchyUpdater, trackUploader, new Logger());
+
+    return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, new Logger());
+  }
+
+  _createSearchController (dbClient) {
+    const searcher = new Searcher(dbClient, new Logger());
+    return new SearchController(searcher);
+  }
+
+  async _readCertFiles (certKeyPath, certFilePath) {
+    const certFiles = {};
+    const readKeyPromise = fs.readFile(certKeyPath).then(certKeyFile => { certFiles.key = certKeyFile; });
+    const readCertPromise = fs.readFile(certFilePath).then(certFile => { certFiles.cert = certFile; });
+
+    await Promise.all([readKeyPromise, readCertPromise]);
+    return certFiles;
+  }
 }
 
-function createSearchController (dbClient) {
-  const searcher = new Searcher(dbClient, new Logger());
-  return new SearchController(searcher);
-}
+const config = new Config();
+const app = new App(new DbConnector(config), config, new Logger());
+app.run();
