@@ -15,6 +15,7 @@ const BusboyStreamReaderToUploadTrack = require('../src/Controllers/BusboyStream
 const TrackController = require('../src/Controllers/TrackController');
 const TrackParserTest = require('./TrackParserTest');
 const { ObjectID } = require('mongodb');
+const SearchResultType = require('../src/Searcher/SearchResultType');
 
 describe(SearchController.name, () => {
   describe('POST /', () => {
@@ -75,8 +76,9 @@ describe(SearchController.name, () => {
         .then(({ body }) => ({ searchResults: body }));
 
       assert.strictEqual(searchResults.length, 2);
-      assert.ok(searchResults.find(t => t.trackTitle === searchTrackPhrase));
-      assert.ok(searchResults.find(t => t.trackTitle === trackBaseData.title));
+      assert.ok(searchResults.every(t => t.type === SearchResultType.track));
+      assert.ok(searchResults.find(t => t.title === searchTrackPhrase));
+      assert.ok(searchResults.find(t => t.title === trackBaseData.title));
     }).timeout(5000);
 
     it('should return albums', async () => {
@@ -112,8 +114,9 @@ describe(SearchController.name, () => {
         .then(({ body }) => ({ searchResults: body }));
 
       assert.strictEqual(searchResults.length, 2);
-      assert.ok(searchResults.find(a => a.albumName === searchAlbumPhrase));
-      assert.ok(searchResults.find(a => a.albumName === trackBaseData.albumName));
+      assert.ok(searchResults.every(a => a.type === SearchResultType.album));
+      assert.ok(searchResults.find(a => a.title === searchAlbumPhrase));
+      assert.ok(searchResults.find(a => a.title === trackBaseData.albumName));
     }).timeout(5000);
 
     it('should return artists', async () => {
@@ -149,8 +152,9 @@ describe(SearchController.name, () => {
         .then(({ body }) => ({ searchResults: body }));
 
       assert.strictEqual(searchResults.length, 2);
-      assert.ok(searchResults.find(a => a.artistName === searchArtistPhrase));
-      assert.ok(searchResults.find(a => a.artistName === trackBaseData.artistName));
+      assert.ok(searchResults.every(a => a.type === SearchResultType.artist));
+      assert.ok(searchResults.find(a => a.title === searchArtistPhrase));
+      assert.ok(searchResults.find(a => a.title === trackBaseData.artistName));
     }).timeout(5000);
   });
 });

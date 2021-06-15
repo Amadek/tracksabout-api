@@ -1,4 +1,5 @@
 const assert = require('assert');
+const SearchResultType = require('./SearchResultType');
 
 module.exports = class Searcher {
   /**
@@ -36,7 +37,15 @@ module.exports = class Searcher {
       { $unwind: '$albums' },
       { $unwind: '$albums.tracks' },
       { $match: { 'albums.tracks.title': trackTitleRegexp } },
-      { $project: { _id: 0, trackTitle: '$albums.tracks.title' } }
+      {
+        $project: {
+          _id: 0,
+          type: SearchResultType.track,
+          title: '$albums.tracks.title',
+          albumName: '$albums.name',
+          artistName: '$name'
+        }
+      }
     ]).toArray();
 
     return tracks;
@@ -46,7 +55,14 @@ module.exports = class Searcher {
     const albums = await this._dbClient.db().collection('artists').aggregate([
       { $unwind: '$albums' },
       { $match: { 'albums.name': albumNameRegexp } },
-      { $project: { _id: 0, albumName: '$albums.name' } }
+      {
+        $project: {
+          _id: 0,
+          type: SearchResultType.album,
+          title: '$albums.name',
+          artistName: '$name'
+        }
+      }
     ]).toArray();
 
     return albums;
@@ -55,7 +71,14 @@ module.exports = class Searcher {
   async _findArtists (albumNameRegexp) {
     const artists = await this._dbClient.db().collection('artists').aggregate([
       { $match: { name: albumNameRegexp } },
-      { $project: { _id: 0, artistName: '$name' } }
+      {
+        $project:
+        {
+          _id: 0,
+          type: SearchResultType.artist,
+          title: '$name'
+        }
+      }
     ]).toArray();
 
     return artists;
