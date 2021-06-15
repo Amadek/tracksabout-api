@@ -20,9 +20,9 @@ module.exports = class Searcher {
     this._logger.log(this, 'Search started.');
 
     let searchResults = [
-      await this._findTracks(trackTitleRegexp),
-      await this._findAlbums(trackTitleRegexp),
-      await this._findArtists(trackTitleRegexp)
+      await this._searchTracks(trackTitleRegexp),
+      await this._searchAlbums(trackTitleRegexp),
+      await this._searchArtists(trackTitleRegexp)
     ];
 
     searchResults = searchResults.flat();
@@ -32,14 +32,70 @@ module.exports = class Searcher {
     return searchResults;
   }
 
-  async _findTracks (trackTitleRegexp) {
+  /**
+   * Search tracks, albums and artists by Id.
+   * @param {import('mongodb').ObjectID} guid
+   * @returns searched track, album or artist with specific type.
+   */
+  async searchById (guid) {
+    assert.ok(guid);
+
+    this._logger.log(this, `Search by id = ${guid.toHexString()} started.`);
+
+    const artist = await this._dbClient.db().collection('artists').findOne({ _id: guid });
+    if (artist) {
+      artist.type = SearchResultType.artist;
+      this._logger.log(this, `Search by id = ${guid.toHexString()} completed. Artist`);
+      return artist;
+    }
+
+    const album = await this._dbClient.db().collection('artists').aggregate([
+      { $unwind: '$albums' },
+      { $match: { 'albums._id': guid } }
+    ]).next();
+
+    if (album) {
+      album.type = SearchResultType.album;
+      this._logger.log(this, `Search by id = ${guid.toHexString()} completed. Album found.`);
+      return album;
+    }
+
+    const track = await this._dbClient.db().collection('artists').aggregate([
+      { $unwind: '$albums' },
+      { $unwind: '$albums.tracks' },
+      { $match: { 'albums.tracks._id': guid } },
+      {
+        $project:
+        {
+          _id: '$albums.tracks._id',
+          fileId: '$albums.tracks.fileId',
+          title: '$albums.tracks.title',
+          albumName: '$albums.tracks.albumName',
+          artistName: '$albums.tracks.artistName',
+          year: '$albums.tracks.year',
+          mimetype: '$albums.tracks.mimetype',
+          type: SearchResultType.track
+        }
+      }
+    ]).next();
+
+    if (track) {
+      this._logger.log(this, `Search by id = ${guid.toHexString()} completed. Track found.`);
+      return track;
+    }
+
+    this._logger.log(this, `Search by id = ${guid.toHexString()} completed. Not found.`);
+    return null;
+  }
+
+  async _searchTracks (trackTitleRegexp) {
     const tracks = await this._dbClient.db().collection('artists').aggregate([
       { $unwind: '$albums' },
       { $unwind: '$albums.tracks' },
       { $match: { 'albums.tracks.title': trackTitleRegexp } },
       {
         $project: {
-          _id: 0,
+          _id: '$albums.tracks._id',
           type: SearchResultType.track,
           title: '$albums.tracks.title',
           albumName: '$albums.name',
@@ -51,13 +107,13 @@ module.exports = class Searcher {
     return tracks;
   }
 
-  async _findAlbums (albumNameRegexp) {
+  async _searchAlbums (albumNameRegexp) {
     const albums = await this._dbClient.db().collection('artists').aggregate([
       { $unwind: '$albums' },
       { $match: { 'albums.name': albumNameRegexp } },
       {
         $project: {
-          _id: 0,
+          _id: '$albums._id',
           type: SearchResultType.album,
           title: '$albums.name',
           artistName: '$name'
@@ -68,13 +124,13 @@ module.exports = class Searcher {
     return albums;
   }
 
-  async _findArtists (albumNameRegexp) {
+  async _searchArtists (albumNameRegexp) {
     const artists = await this._dbClient.db().collection('artists').aggregate([
       { $match: { name: albumNameRegexp } },
       {
         $project:
         {
-          _id: 0,
+          _id: 1,
           type: SearchResultType.artist,
           title: '$name'
         }

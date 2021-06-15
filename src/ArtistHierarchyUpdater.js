@@ -69,6 +69,7 @@ module.exports = class AritstHierarchyUpdater {
 
   _createAlbum (uploadedTrack) {
     return {
+      _id: new ObjectID(),
       name: uploadedTrack.albumName,
       tracks: []
     };

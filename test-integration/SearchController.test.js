@@ -156,6 +156,54 @@ describe(SearchController.name, () => {
       assert.ok(searchResults.find(a => a.title === searchArtistPhrase));
       assert.ok(searchResults.find(a => a.title === trackBaseData.artistName));
     }).timeout(5000);
+
+    it('should return track by id', async () => {
+      // ARRANGE
+      const searchTrackPhrase = new ObjectID().toHexString();
+      const trackBaseData = {
+        title: searchTrackPhrase,
+        albumName: new ObjectID().toHexString(),
+        artistName: new ObjectID().toHexString()
+      };
+      const dbClient = await new DbConnector(new Config()).connect();
+      const app = createApp(dbClient, trackBaseData);
+
+      await request(app)
+        .post('/track')
+        .set('Content-type', 'multipart/form-data')
+        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .expect(200);
+
+      const { searchResults } = await request(app)
+        .get('/search/' + searchTrackPhrase)
+        .expect(200)
+        .then(({ body }) => ({ searchResults: body }));
+
+      const uploadedTrack = searchResults[0];
+
+      // ACT
+      const { searchByIdResult } = await request(app)
+        .get('/search/id/' + uploadedTrack._id)
+        .expect(200)
+        .then(({ body }) => ({ searchByIdResult: body }));
+
+      assert.ok(searchByIdResult);
+      assert.strictEqual(searchByIdResult._id, uploadedTrack._id);
+      assert.strictEqual(searchByIdResult.type, SearchResultType.track);
+      assert.strictEqual(searchByIdResult.title, trackBaseData.title);
+      assert.strictEqual(searchByIdResult.albumName, trackBaseData.albumName);
+      assert.strictEqual(searchByIdResult.artistName, trackBaseData.artistName);
+      assert.ok(searchByIdResult.year);
+      assert.ok(searchByIdResult.mimetype);
+    });
+
+    it('should return album by id', async () => {
+      assert.fail('Not implemented.');
+    });
+
+    it('should return artist by id', async () => {
+      assert.fail('Not implemented.');
+    });
   });
 });
 
