@@ -2,7 +2,7 @@ const assert = require('assert');
 
 module.exports = class BusboyInPromiseWrapper {
   /**
-   * @param {import('../controllers/Logger')} logger
+   * @param {import('../Controllers/Logger')} logger
    */
   constructor (logger) {
     assert.ok(logger);

@@ -4,7 +4,7 @@ const { GridFSBucket, ObjectID } = require('mongodb');
 module.exports = class TrackUploader {
   /**
    * @param {import('mongodb').MongoClient} dbClient
-   * @param {import('../controllers/Logger')} logger
+   * @param {import('./Controllers/Logger')} logger
    */
   constructor (dbClient, logger) {
     assert.ok(dbClient);

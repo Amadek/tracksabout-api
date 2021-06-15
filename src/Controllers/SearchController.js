@@ -4,15 +4,15 @@ const { BadRequest } = require('http-errors');
 
 module.exports = class SearchController {
   /**
-   * @param {import('../entities/Finder')} finder
+   * @param {import('../Searcher/Searcher')} searcher
    */
-  constructor (finder) {
-    assert.ok(finder); this._finder = finder;
+  constructor (searcher) {
+    assert.ok(searcher); this.searcher = searcher;
   }
 
   route () {
     const router = Router();
-    router.post('/:phrase', this._postSearch.bind(this));
+    router.get('/:phrase', this._postSearch.bind(this));
     return router;
   }
 
@@ -31,7 +31,7 @@ module.exports = class SearchController {
       if (!req.params.phrase || req.params.phrase.length < 3) throw new BadRequest('Search phrase is empty or too short!');
 
       const trackTitleRegexp = new RegExp(req.params.phrase);
-      const tracks = await this._finder.find(trackTitleRegexp);
+      const tracks = await this.searcher.search(trackTitleRegexp);
 
       return res.json(tracks);
     } catch (error) {

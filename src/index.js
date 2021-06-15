@@ -1,17 +1,17 @@
-const DbConnector = require('./entities/DbConnector');
+const DbConnector = require('./DbConnector');
 const express = require('express');
-const TrackController = require('./controllers/TrackController');
-const TrackParser = require('./entities/TrackParser');
-const TrackPresenceValidator = require('./entities/TrackPresenceValidator');
-const TrackUploader = require('./entities/TrackUploader');
+const TrackController = require('./Controllers/TrackController');
+const TrackParser = require('./TrackParser');
+const TrackPresenceValidator = require('./TrackPresenceValidator');
+const TrackUploader = require('./TrackUploader');
 const { NotFound } = require('http-errors');
-const AritstHierarchyUpdater = require('./entities/ArtistHierarchyUpdater');
-const Logger = require('./controllers/Logger');
+const AritstHierarchyUpdater = require('./ArtistHierarchyUpdater');
+const Logger = require('./Controllers/Logger');
 const Config = require('./Config');
-const BusboyStreamReaderToValidateTrack = require('./controllers/BusboyStreamReaderToValidateTrack');
-const BusboyStreamReaderToUploadTrack = require('./controllers/BusboyStreamReaderToUploadTrack');
-const Finder = require('./entities/Finder');
-const SearchController = require('./controllers/SearchController');
+const BusboyStreamReaderToValidateTrack = require('./Controllers/BusboyStreamReaderToValidateTrack');
+const BusboyStreamReaderToUploadTrack = require('./Controllers/BusboyStreamReaderToUploadTrack');
+const Searcher = require('./Searcher/Searcher');
+const SearchController = require('./Controllers/SearchController');
 
 const config = new Config();
 
@@ -50,6 +50,6 @@ function createTrackController (dbClient) {
 }
 
 function createSearchController (dbClient) {
-  const finder = new Finder(dbClient, new Logger());
-  return new SearchController(finder);
+  const searcher = new Searcher(dbClient, new Logger());
+  return new SearchController(searcher);
 }

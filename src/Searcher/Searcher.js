@@ -1,9 +1,9 @@
 const assert = require('assert');
 
-module.exports = class Finder {
+module.exports = class Searcher {
   /**
    * @param {import('mongodb').MongoClient} dbClient
-   * @param {import('../controllers/Logger')} logger
+   * @param {import('../Controllers/Logger')} logger
    */
   constructor (dbClient, logger) {
     assert.ok(dbClient); this._dbClient = dbClient;
@@ -13,10 +13,10 @@ module.exports = class Finder {
   /**
    * @param {RegExp} trackTitleRegexp
    */
-  async find (trackTitleRegexp) {
+  async search (trackTitleRegexp) {
     assert.ok(trackTitleRegexp);
 
-    this._logger.log(this, 'Find started.');
+    this._logger.log(this, 'Search started.');
 
     let searchResults = [
       await this._findTracks(trackTitleRegexp),
@@ -26,7 +26,7 @@ module.exports = class Finder {
 
     searchResults = searchResults.flat();
 
-    this._logger.log(this, `Find completed. Found ${searchResults.length} elements.`);
+    this._logger.log(this, `Search completed. Found ${searchResults.length} elements.`);
 
     return searchResults;
   }

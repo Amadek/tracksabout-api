@@ -9,7 +9,7 @@ module.exports = class TrackController {
   /**
    * @param {import('./BusboyStreamReaderToUploadTrack')} busboyStreamReaderToUploadTrack
    * @param {import('./BusboyStreamReaderToValidateTrack')} busboyStreamReaderToValidateTrack
-   * @param {import('../controllers/Logger')} logger
+   * @param {import('../Controllers/Logger')} logger
    */
   constructor (busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, logger) {
     assert.ok(busboyStreamReaderToUploadTrack); this._busboyStreamReaderToUploadTrack = busboyStreamReaderToUploadTrack;

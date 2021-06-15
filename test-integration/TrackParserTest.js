@@ -1,5 +1,5 @@
 const { ObjectID } = require('mongodb');
-const ITrackParser = require('../src/entities/ITrackParser');
+const ITrackParser = require('../src/ITrackParser');
 
 /**
  * We need to mock TrackParser because we cannot create unique file with metadata every time when test starts.

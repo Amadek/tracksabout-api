@@ -3,7 +3,7 @@ const assert = require('assert');
 
 module.exports = class DbConnector {
   /**
-   * @param {import('../Config')} config
+   * @param {import('./Config')} config
    */
   constructor (config) {
     assert.ok(config);

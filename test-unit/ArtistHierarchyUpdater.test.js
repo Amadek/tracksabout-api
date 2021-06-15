@@ -1,8 +1,8 @@
 /* global describe it */
-const AritstHierarchyUpdater = require('../src/entities/ArtistHierarchyUpdater');
+const AritstHierarchyUpdater = require('../src/ArtistHierarchyUpdater');
 const assert = require('assert');
 const { ObjectID } = require('mongodb');
-const Logger = require('../src/controllers/Logger');
+const Logger = require('../src/Controllers/Logger');
 
 describe('ArtistHierarchyUpdater', () => {
   describe('update()', () => {

@@ -2,17 +2,17 @@
 const express = require('express');
 const request = require('supertest');
 const assert = require('assert');
-const SearchController = require('../src/controllers/SearchController');
-const Finder = require('../src/entities/Finder');
-const Logger = require('../src/controllers/Logger');
-const DbConnector = require('../src/entities/DbConnector');
+const SearchController = require('../src/Controllers/SearchController');
+const Searcher = require('../src/Searcher/Searcher');
+const Logger = require('../src/Controllers/Logger');
+const DbConnector = require('../src/DbConnector');
 const Config = require('../src/Config');
-const TrackUploader = require('../src/entities/TrackUploader');
-const TrackPresenceValidator = require('../src/entities/TrackPresenceValidator');
-const AritstHierarchyUpdater = require('../src/entities/ArtistHierarchyUpdater');
-const BusboyStreamReaderToValidateTrack = require('../src/controllers/BusboyStreamReaderToValidateTrack');
-const BusboyStreamReaderToUploadTrack = require('../src/controllers/BusboyStreamReaderToUploadTrack');
-const TrackController = require('../src/controllers/TrackController');
+const TrackUploader = require('../src/TrackUploader');
+const TrackPresenceValidator = require('../src/TrackPresenceValidator');
+const AritstHierarchyUpdater = require('../src/ArtistHierarchyUpdater');
+const BusboyStreamReaderToValidateTrack = require('../src/Controllers/BusboyStreamReaderToValidateTrack');
+const BusboyStreamReaderToUploadTrack = require('../src/Controllers/BusboyStreamReaderToUploadTrack');
+const TrackController = require('../src/Controllers/TrackController');
 const TrackParserTest = require('./TrackParserTest');
 const { ObjectID } = require('mongodb');
 
@@ -30,15 +30,15 @@ describe(SearchController.name, () => {
 
       // ACT, ASSERT
       await request(app)
-        .post('/search/')
+        .get('/search/')
         .expect(404);
 
       await request(app)
-        .post('/search/ab')
+        .get('/search/ab')
         .expect(400);
 
       await request(app)
-        .post('/search/abc')
+        .get('/search/abc')
         .expect(200);
     }).timeout(5000);
 
@@ -70,7 +70,7 @@ describe(SearchController.name, () => {
 
       // ACT, ASSERT
       const { searchResults } = await request(app)
-        .post('/search/' + searchTrackPhrase)
+        .get('/search/' + searchTrackPhrase)
         .expect(200)
         .then(({ body }) => ({ searchResults: body }));
 
@@ -107,7 +107,7 @@ describe(SearchController.name, () => {
 
       // ACT, ASSERT
       const { searchResults } = await request(app)
-        .post('/search/' + searchAlbumPhrase)
+        .get('/search/' + searchAlbumPhrase)
         .expect(200)
         .then(({ body }) => ({ searchResults: body }));
 
@@ -144,7 +144,7 @@ describe(SearchController.name, () => {
 
       // ACT, ASSERT
       const { searchResults } = await request(app)
-        .post('/search/' + searchArtistPhrase)
+        .get('/search/' + searchArtistPhrase)
         .expect(200)
         .then(({ body }) => ({ searchResults: body }));
 
@@ -170,9 +170,9 @@ function createApp (dbClient, trackBaseData) {
 }
 
 function createSearchController (dbClient) {
-  const trackFinder = new Finder(dbClient, new Logger());
+  const searcher = new Searcher(dbClient, new Logger());
 
-  return new SearchController(trackFinder);
+  return new SearchController(searcher);
 }
 
 function createTrackController (dbClient, trackBaseData) {
