@@ -71,6 +71,7 @@ module.exports = class AritstHierarchyUpdater {
     return {
       _id: new ObjectID(),
       name: uploadedTrack.albumName,
+      year: uploadedTrack.year,
       tracks: []
     };
   }

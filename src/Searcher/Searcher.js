@@ -42,24 +42,60 @@ module.exports = class Searcher {
 
     this._logger.log(this, `Search by id = ${guid.toHexString()} started.`);
 
-    const artist = await this._dbClient.db().collection('artists').findOne({ _id: guid });
+    const artist = await this._searchArtist(guid);
     if (artist) {
-      artist.type = SearchResultType.artist;
       this._logger.log(this, `Search by id = ${guid.toHexString()} completed. Artist`);
       return artist;
     }
 
-    const album = await this._dbClient.db().collection('artists').aggregate([
-      { $unwind: '$albums' },
-      { $match: { 'albums._id': guid } }
-    ]).next();
-
+    const album = await this._searchAlbum(guid);
     if (album) {
-      album.type = SearchResultType.album;
       this._logger.log(this, `Search by id = ${guid.toHexString()} completed. Album found.`);
       return album;
     }
 
+    const track = await this._searchTrack(guid);
+    if (track) {
+      this._logger.log(this, `Search by id = ${guid.toHexString()} completed. Track found.`);
+      return track;
+    }
+
+    this._logger.log(this, `Search by id = ${guid.toHexString()} completed. Not found.`);
+    return null;
+  }
+
+  async _searchArtist (guid) {
+    // TODO okroić artystę tak, żeby albumy nie miały utworów.
+    const artist = await this._dbClient.db().collection('artists').findOne({ _id: guid });
+
+    if (artist) {
+      artist.type = SearchResultType.artist;
+    }
+
+    return artist;
+  }
+
+  async _searchAlbum (guid) {
+    const album = await this._dbClient.db().collection('artists').aggregate([
+      { $unwind: '$albums' },
+      { $match: { 'albums._id': guid } },
+      {
+        $project:
+        {
+          _id: '$albums._id',
+          name: '$albums.name',
+          artistName: '$name',
+          year: '$albums.year',
+          type: SearchResultType.album,
+          tracks: '$albums.tracks'
+        }
+      }
+    ]).next();
+
+    return album;
+  }
+
+  async _searchTrack (guid) {
     const track = await this._dbClient.db().collection('artists').aggregate([
       { $unwind: '$albums' },
       { $unwind: '$albums.tracks' },
@@ -79,13 +115,7 @@ module.exports = class Searcher {
       }
     ]).next();
 
-    if (track) {
-      this._logger.log(this, `Search by id = ${guid.toHexString()} completed. Track found.`);
-      return track;
-    }
-
-    this._logger.log(this, `Search by id = ${guid.toHexString()} completed. Not found.`);
-    return null;
+    return track;
   }
 
   async _searchTracks (trackTitleRegexp) {

@@ -18,7 +18,7 @@ const { ObjectID } = require('mongodb');
 const SearchResultType = require('../src/Searcher/SearchResultType');
 
 describe(SearchController.name, () => {
-  describe('POST /', () => {
+  describe('GET /search/:phrase', () => {
     it('should validate search phrase', async () => {
       // ARRANGE
       const trackBaseData = {
@@ -156,7 +156,9 @@ describe(SearchController.name, () => {
       assert.ok(searchResults.find(a => a.title === searchArtistPhrase));
       assert.ok(searchResults.find(a => a.title === trackBaseData.artistName));
     }).timeout(5000);
+  });
 
+  describe('GET /search/id/:id', () => {
     it('should return track by id', async () => {
       // ARRANGE
       const searchTrackPhrase = new ObjectID().toHexString();
@@ -193,17 +195,94 @@ describe(SearchController.name, () => {
       assert.strictEqual(searchByIdResult.title, trackBaseData.title);
       assert.strictEqual(searchByIdResult.albumName, trackBaseData.albumName);
       assert.strictEqual(searchByIdResult.artistName, trackBaseData.artistName);
+      assert.ok(searchByIdResult.fileId);
       assert.ok(searchByIdResult.year);
       assert.ok(searchByIdResult.mimetype);
-    });
+    }).timeout(5000);
 
     it('should return album by id', async () => {
-      assert.fail('Not implemented.');
-    });
+      // ARRANGE
+      const searchAlbumPhrase = new ObjectID().toHexString();
+      const trackBaseData = {
+        title: new ObjectID().toHexString(),
+        albumName: searchAlbumPhrase,
+        artistName: new ObjectID().toHexString()
+      };
+      const dbClient = await new DbConnector(new Config()).connect();
+      const app = createApp(dbClient, trackBaseData);
+
+      await request(app)
+        .post('/track')
+        .set('Content-type', 'multipart/form-data')
+        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .expect(200);
+
+      const { searchResults } = await request(app)
+        .get('/search/' + searchAlbumPhrase)
+        .expect(200)
+        .then(({ body }) => ({ searchResults: body }));
+
+      const uploadedAlbum = searchResults[0];
+
+      // ACT
+      const { searchByIdResult } = await request(app)
+        .get('/search/id/' + uploadedAlbum._id)
+        .expect(200)
+        .then(({ body }) => ({ searchByIdResult: body }));
+
+      assert.ok(searchByIdResult);
+      assert.strictEqual(searchByIdResult._id, uploadedAlbum._id);
+      assert.strictEqual(searchByIdResult.type, SearchResultType.album);
+      assert.strictEqual(searchByIdResult.name, trackBaseData.albumName);
+      assert.strictEqual(searchByIdResult.artistName, trackBaseData.artistName);
+      assert.ok(searchByIdResult.year);
+      assert.ok(searchByIdResult.tracks);
+      assert.ok(searchByIdResult.tracks?.length > 0);
+
+      assert.ok(searchByIdResult.tracks[0]);
+      assert.strictEqual(searchByIdResult.tracks[0].title, trackBaseData.title);
+      assert.ok(searchByIdResult.tracks[0].fileId);
+      assert.ok(searchByIdResult.tracks[0].mimetype);
+    }).timeout(5000);
 
     it('should return artist by id', async () => {
-      assert.fail('Not implemented.');
-    });
+      // ARRANGE
+      const searchArtistPhrase = new ObjectID().toHexString();
+      const trackBaseData = {
+        title: new ObjectID().toHexString(),
+        albumName: new ObjectID().toHexString(),
+        artistName: searchArtistPhrase
+      };
+      const dbClient = await new DbConnector(new Config()).connect();
+      const app = createApp(dbClient, trackBaseData);
+
+      await request(app)
+        .post('/track')
+        .set('Content-type', 'multipart/form-data')
+        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .expect(200);
+
+      const { searchResults } = await request(app)
+        .get('/search/' + searchArtistPhrase)
+        .expect(200)
+        .then(({ body }) => ({ searchResults: body }));
+
+      const uploadedArtist = searchResults[0];
+
+      // ACT
+      const { searchByIdResult } = await request(app)
+        .get('/search/id/' + uploadedArtist._id)
+        .expect(200)
+        .then(({ body }) => ({ searchByIdResult: body }));
+
+      assert.ok(searchByIdResult);
+      assert.strictEqual(searchByIdResult._id, uploadedArtist._id);
+      assert.strictEqual(searchByIdResult.type, SearchResultType.artist);
+      assert.strictEqual(searchByIdResult.name, trackBaseData.artistName);
+      assert.ok(searchByIdResult.albums);
+      assert.strictEqual(searchByIdResult.albums[0].name, trackBaseData.albumName);
+      assert.ok(searchByIdResult.albums[0].year);
+    }).timeout(5000);
   });
 });
 
