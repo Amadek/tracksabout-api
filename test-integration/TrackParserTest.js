@@ -12,6 +12,7 @@ module.exports = class TrackParserTest extends ITrackParser {
 
   parse (_fileStream, _mimetype) {
     return {
+      number: Math.floor(Math.random() * 100 + 1),
       artistName: this._trackBaseData?.artistName ?? new ObjectID().toHexString(),
       title: this._trackBaseData?.title ?? new ObjectID().toHexString(),
       albumName: this._trackBaseData?.albumName ?? new ObjectID().toHexString(),

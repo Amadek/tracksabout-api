@@ -4,9 +4,9 @@ const BusboyStreamReader = require('./BusboyStreamReader');
 
 module.exports = class BusboyStreamReaderToUploadTrack extends BusboyStreamReader {
   /**
-   * @param {import('../entities/ITrackParser')} trackParser
-   * @param {import('../entities/ArtistHierarchyUpdater')} artistHierarchyUpdater
-   * @param {import('../entities/TrackUploader')} trackUploader
+   * @param {import('../ITrackParser')} trackParser
+   * @param {import('../ArtistHierarchyUpdater')} artistHierarchyUpdater
+   * @param {import('../TrackUploader')} trackUploader
    * @param {import('./Logger')} logger
    */
   constructor (trackParser, artistHierarchyUpdater, trackUploader, logger) {

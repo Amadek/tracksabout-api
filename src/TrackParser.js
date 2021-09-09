@@ -19,15 +19,18 @@ module.exports = class TrackParser extends ITrackParser {
     return Promise.resolve()
       .then(() => mm.parseStream(fileStream, { mimeType: mimetype }))
       .then(metadata => {
+        this._logger.log(this, 'Parsing information from track: \n' + JSON.stringify(metadata, null, 2));
+
         const parsedTrack = {
-          artistName: metadata.common.artist,
+          number: metadata.common.track.no,
           title: metadata.common.title,
           albumName: metadata.common.album,
+          artistName: metadata.common.artist,
           year: metadata.common.year,
           mimetype: mimetype
         };
 
-        this._logger.log(this, 'Parsing ends: \n' + JSON.stringify(parsedTrack, null, 2));
+        this._logger.log(this, 'Parsing ends, parsed track: \n' + JSON.stringify(parsedTrack, null, 2));
         return parsedTrack;
       });
   }

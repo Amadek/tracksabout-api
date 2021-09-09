@@ -243,6 +243,7 @@ describe(SearchController.name, () => {
       assert.strictEqual(searchByIdResult.tracks[0].title, trackBaseData.title);
       assert.ok(searchByIdResult.tracks[0].fileId);
       assert.ok(searchByIdResult.tracks[0].mimetype);
+      assert.ok(searchByIdResult.tracks[0].number);
     }).timeout(5000);
 
     it('should return artist by id', async () => {
