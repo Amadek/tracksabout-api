@@ -32,7 +32,7 @@ module.exports = class SearchController {
     try {
       if (!req.params.phrase || req.params.phrase.length < 3) throw new BadRequest('Search phrase is empty or too short!');
 
-      const trackTitleRegexp = new RegExp(req.params.phrase);
+      const trackTitleRegexp = new RegExp(req.params.phrase, 'i'); // 'i' = ignore case.
       const tracks = await this._searcher.search(trackTitleRegexp);
 
       return res.json(tracks);

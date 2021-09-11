@@ -156,6 +156,44 @@ describe(SearchController.name, () => {
       assert.ok(searchResults.find(a => a.title === searchArtistPhrase));
       assert.ok(searchResults.find(a => a.title === trackBaseData.artistName));
     }).timeout(5000);
+
+    it('should ignore case sensitivity', async () => {
+      // ARRANGE
+      const searchTrackPhrase = new ObjectID().toHexString();
+      const trackBaseData = {
+        title: searchTrackPhrase,
+        albumName: new ObjectID().toHexString(),
+        artistName: new ObjectID().toHexString()
+      };
+      const dbClient = await new DbConnector(new Config()).connect();
+      let app = createApp(dbClient, trackBaseData);
+
+      await request(app)
+        .post('/track')
+        .set('Content-type', 'multipart/form-data')
+        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .expect(200);
+
+      trackBaseData.title += new ObjectID().toHexString();
+      app = createApp(dbClient, trackBaseData);
+
+      await request(app)
+        .post('/track')
+        .set('Content-type', 'multipart/form-data')
+        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .expect(200);
+
+      // ACT, ASSERT
+      const { searchResults } = await request(app)
+        .get('/search/' + searchTrackPhrase.toUpperCase())
+        .expect(200)
+        .then(({ body }) => ({ searchResults: body }));
+
+      assert.strictEqual(searchResults.length, 2);
+      assert.ok(searchResults.every(t => t.type === SearchResultType.track));
+      assert.ok(searchResults.find(t => t.title === searchTrackPhrase));
+      assert.ok(searchResults.find(t => t.title === trackBaseData.title));
+    }).timeout(5000);
   });
 
   describe('GET /search/id/:id', () => {
@@ -244,6 +282,7 @@ describe(SearchController.name, () => {
       assert.ok(searchByIdResult.tracks[0].fileId);
       assert.ok(searchByIdResult.tracks[0].mimetype);
       assert.ok(searchByIdResult.tracks[0].number);
+      assert.ok(searchByIdResult.artistId);
     }).timeout(5000);
 
     it('should return artist by id', async () => {

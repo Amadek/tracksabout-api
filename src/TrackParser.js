@@ -19,7 +19,7 @@ module.exports = class TrackParser extends ITrackParser {
     return Promise.resolve()
       .then(() => mm.parseStream(fileStream, { mimeType: mimetype }))
       .then(metadata => {
-        this._logger.log(this, 'Parsing information from track: \n' + JSON.stringify(metadata, null, 2));
+        this._logger.log(this, 'Parsing information from track.');
 
         const parsedTrack = {
           number: metadata.common.track.no,
