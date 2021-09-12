@@ -4,7 +4,7 @@ const { ObjectID } = require('mongodb');
 module.exports = class AritstHierarchyUpdater {
   /**
    * @param {any} dbClient
-   * @param {import('../controllers/Logger')} logger
+   * @param {import('./Controllers/Logger')} logger
    */
   constructor (dbClient, logger) {
     assert.ok(dbClient);
@@ -69,7 +69,9 @@ module.exports = class AritstHierarchyUpdater {
 
   _createAlbum (uploadedTrack) {
     return {
+      _id: new ObjectID(),
       name: uploadedTrack.albumName,
+      year: uploadedTrack.year,
       tracks: []
     };
   }

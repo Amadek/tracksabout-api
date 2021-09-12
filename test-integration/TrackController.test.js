@@ -3,15 +3,15 @@ const assert = require('assert');
 const express = require('express');
 const request = require('supertest');
 const { ObjectID } = require('mongodb');
-const DbConnector = require('../src/entities/DbConnector.js');
-const TrackController = require('../src/controllers/TrackController');
-const TrackUploader = require('../src/entities/TrackUploader');
-const AritstHierarchyUpdater = require('../src/entities/ArtistHierarchyUpdater');
-const Logger = require('../src/controllers/Logger');
+const DbConnector = require('../src/DbConnector.js');
+const TrackController = require('../src/Controllers/TrackController');
+const TrackUploader = require('../src/TrackUploader');
+const AritstHierarchyUpdater = require('../src/ArtistHierarchyUpdater');
+const Logger = require('../src/Controllers/Logger');
 const Config = require('../src/Config');
-const TrackPresenceValidator = require('../src/entities/TrackPresenceValidator.js');
-const BusboyStreamReaderToValidateTrack = require('../src/controllers/BusboyStreamReaderToValidateTrack.js');
-const BusboyStreamReaderToUploadTrack = require('../src/controllers/BusboyStreamReaderToUploadTrack.js');
+const TrackPresenceValidator = require('../src/TrackPresenceValidator.js');
+const BusboyStreamReaderToValidateTrack = require('../src/Controllers/BusboyStreamReaderToValidateTrack.js');
+const BusboyStreamReaderToUploadTrack = require('../src/Controllers/BusboyStreamReaderToUploadTrack.js');
 const TrackParserTest = require('./TrackParserTest');
 
 describe('TrackController', () => {
@@ -47,6 +47,7 @@ describe('TrackController', () => {
       assert.strictEqual(artist.albums[0].tracks.length, 1);
       assert.strictEqual(artist.albums[0].tracks[0].title, trackBaseData.title);
       assert.ok(artist.albums[0].tracks[0].fileId);
+      assert.ok(artist.albums[0].tracks[0].number);
     }).timeout(5000);
 
     it('should return BadRequest when no file was uploading', async () => {
@@ -138,6 +139,7 @@ describe('TrackController', () => {
       assert.strictEqual(parsedTrack.title, trackBaseData.title);
       assert.strictEqual(parsedTrack.albumName, trackBaseData.albumName);
       assert.strictEqual(parsedTrack.artistName, trackBaseData.artistName);
+      assert.ok(parsedTrack.number);
     });
 
     it('should return OK when track has not artist\'s album yet in database', async () => {
@@ -173,6 +175,7 @@ describe('TrackController', () => {
       assert.strictEqual(parsedTrack.title, newTrack.title);
       assert.strictEqual(parsedTrack.albumName, newTrack.albumName);
       assert.strictEqual(parsedTrack.artistName, newTrack.artistName);
+      assert.ok(parsedTrack.number);
     }).timeout(5000);
 
     it('should return Conflict when track already exists in artist\'s album in database', async () => {
