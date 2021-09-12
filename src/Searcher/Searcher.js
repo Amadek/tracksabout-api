@@ -65,8 +65,31 @@ module.exports = class Searcher {
   }
 
   async _searchArtist (guid) {
-    // TODO okroić artystę tak, żeby albumy nie miały utworów.
-    const artist = await this._dbClient.db().collection('artists').findOne({ _id: guid });
+    const artist = await this._dbClient.db().collection('artists').aggregate([
+      { $match: { _id: guid } },
+      { $unwind: '$albums' },
+      {
+        $project:
+        {
+          _id: '$_id',
+          name: '$name',
+          album:
+          {
+            _id: '$albums._id',
+            name: '$albums.name',
+            year: '$albums.year'
+          }
+        }
+      },
+      {
+        $group:
+        {
+          _id: '$_id',
+          name: { $first: '$name' },
+          albums: { $addToSet: '$album' }
+        }
+      }
+    ]).next();
 
     if (artist) {
       artist.type = SearchResultType.artist;

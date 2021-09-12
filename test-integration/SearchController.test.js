@@ -322,7 +322,8 @@ describe(SearchController.name, () => {
       assert.ok(searchByIdResult.albums);
       assert.strictEqual(searchByIdResult.albums[0].name, trackBaseData.albumName);
       assert.ok(searchByIdResult.albums[0].year);
-    }).timeout(5000);
+      assert.strictEqual(searchByIdResult.albums[0].tracks, undefined, "we don't want to send tracks of artist's album, only album's data");
+    });
   });
 });
 
