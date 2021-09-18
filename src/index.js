@@ -65,7 +65,7 @@ class App {
     const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
     const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, artistHierarchyUpdater, trackUploader, new Logger());
 
-    return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, new Logger());
+    return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, new Searcher(dbClient, new Logger()), dbClient, new Logger());
   }
 
   _createSearchController (dbClient) {

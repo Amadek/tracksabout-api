@@ -47,7 +47,7 @@ module.exports = class SearchController {
     assert.ok(next);
 
     try {
-      if (!req.params.id || !ObjectID.isValid(req.params.id)) throw new BadRequest('Id is empty or too short!');
+      if (!req.params.id || !ObjectID.isValid(req.params.id)) throw new BadRequest('Id is empty or invalid!');
 
       const searchResult = await this._searcher.searchById(new ObjectID(req.params.id));
 
