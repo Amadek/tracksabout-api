@@ -15,6 +15,7 @@ const SearchController = require('./Controllers/SearchController');
 const https = require('https');
 const fs = require('fs/promises');
 const assert = require('assert');
+const TrackStreamer = require('./TrackStreamer');
 
 class App {
   constructor (dbConnector, config, logger) {
@@ -59,13 +60,14 @@ class App {
 
   _createTrackController (dbClient) {
     const trackParser = new TrackParser(new Logger());
+    const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
     const trackUploader = new TrackUploader(dbClient, new Logger());
     const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
     const artistHierarchyUpdater = new AritstHierarchyUpdater(dbClient, new Logger());
     const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
     const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, artistHierarchyUpdater, trackUploader, new Logger());
 
-    return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, new Searcher(dbClient, new Logger()), dbClient, new Logger());
+    return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, trackStreamer, new Logger());
   }
 
   _createSearchController (dbClient) {

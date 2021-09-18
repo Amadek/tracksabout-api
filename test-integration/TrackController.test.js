@@ -13,6 +13,8 @@ const TrackPresenceValidator = require('../src/TrackPresenceValidator.js');
 const BusboyStreamReaderToValidateTrack = require('../src/Controllers/BusboyStreamReaderToValidateTrack.js');
 const BusboyStreamReaderToUploadTrack = require('../src/Controllers/BusboyStreamReaderToUploadTrack.js');
 const TrackParserTest = require('./TrackParserTest');
+const TrackStreamer = require('../src/TrackStreamer.js');
+const Searcher = require('../src/Searcher/Searcher.js');
 
 describe('TrackController', () => {
   describe('POST /', () => {
@@ -208,17 +210,25 @@ describe('TrackController', () => {
         .expect(409);
     }).timeout(5000);
   });
+
+  describe('GET /stream/:id', () => {
+    it('should work?', () => {
+      // TODO Narazie nie mam pomysłu jak to testować. Może sprawa się wyjaśni po implementacji po stronie kliena.
+      // Na pewn można posprawdzać czy żądanie ostatecznie się wykona pozytywnie.
+    });
+  });
 });
 
 function createApp (dbClient, trackBaseData) {
   const app = express();
   const uploader = new TrackUploader(dbClient, new Logger());
+  const streamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const updater = new AritstHierarchyUpdater(dbClient, new Logger());
   const parser = new TrackParserTest(trackBaseData);
   const validator = new TrackPresenceValidator(dbClient, new Logger());
   const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(parser, validator, new Logger());
   const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(parser, updater, uploader, new Logger());
-  const controller = new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, new Logger());
+  const controller = new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, streamer, new Logger());
   app.use('/', controller.route());
 
   const logger = new Logger();

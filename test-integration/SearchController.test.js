@@ -16,6 +16,7 @@ const TrackController = require('../src/Controllers/TrackController');
 const TrackParserTest = require('./TrackParserTest');
 const { ObjectID } = require('mongodb');
 const SearchResultType = require('../src/Searcher/SearchResultType');
+const TrackStreamer = require('../src/TrackStreamer');
 
 describe(SearchController.name, () => {
   describe('GET /search/:phrase', () => {
@@ -349,11 +350,12 @@ function createSearchController (dbClient) {
 
 function createTrackController (dbClient, trackBaseData) {
   const trackParser = new TrackParserTest(trackBaseData);
+  const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const trackUploader = new TrackUploader(dbClient, new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
   const artistHierarchyUpdater = new AritstHierarchyUpdater(dbClient, new Logger());
   const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
   const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, artistHierarchyUpdater, trackUploader, new Logger());
 
-  return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, new Logger());
+  return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, trackStreamer, new Logger());
 }

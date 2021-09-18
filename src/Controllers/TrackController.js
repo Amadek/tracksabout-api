@@ -10,15 +10,13 @@ module.exports = class TrackController {
   /**
    * @param {import('./BusboyStreamReaderToUploadTrack')} busboyStreamReaderToUploadTrack
    * @param {import('./BusboyStreamReaderToValidateTrack')} busboyStreamReaderToValidateTrack
-   * @param {import('../Searcher/Searcher')} searcher
-   * @param {import('mongodb').MongoClient} dbClient
+   * @param {import('../TrackStreamer')} trackStreamer
    * @param {import('../Controllers/Logger')} logger
    */
-  constructor (busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, searcher, dbClient, logger) {
+  constructor (busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, trackStreamer, logger) {
     assert.ok(busboyStreamReaderToUploadTrack); this._busboyStreamReaderToUploadTrack = busboyStreamReaderToUploadTrack;
     assert.ok(busboyStreamReaderToValidateTrack); this._busboyStreamReaderToValidateTrack = busboyStreamReaderToValidateTrack;
-    assert.ok(searcher); this._searcher = searcher;
-    assert.ok(dbClient); this._dbClient = dbClient;
+    assert.ok(trackStreamer); this._trackStreamer = trackStreamer;
     assert.ok(logger); this._logger = logger;
     this._busboyWrapper = new BusboyInPromiseWrapper(new Logger());
   }
@@ -88,26 +86,8 @@ module.exports = class TrackController {
     try {
       if (!req.params.id || !ObjectID.isValid(req.params.id)) throw new BadRequest('Track Id is empty or invalid!');
 
-      res.set('content-type', 'audio/mp3');
-      res.set('accept-ranges', 'bytes');
-
       const trackId = new ObjectID(req.params.id);
-      const track = await this._searcher.searchById(trackId);
-
-      const bucket = new GridFSBucket(this._dbClient.db(), { chunkSizeBytes: 1024, bucketName: 'tracks' });
-
-      const downloadTrackStream = bucket.openDownloadStream(track.fileId);
-      downloadTrackStream.on('data', (chunk) => {
-        res.write(chunk);
-      });
-      downloadTrackStream.on('error', err => {
-        const errorMessage = `Error occured in downloading stream for TrackId = ${req.params.id}. \n ${err}`;
-        this._logger.log(this, errorMessage);
-        res.status(500).json({ message: errorMessage });
-      });
-      downloadTrackStream.on('end', () => {
-        res.end();
-      });
+      await this._trackStreamer.stream(trackId, res);
     } catch (error) {
       next(error);
     }
