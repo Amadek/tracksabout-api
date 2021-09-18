@@ -51,6 +51,7 @@ module.exports = class TrackStreamer {
   _getHttpContentTypeFromMimetype (trackMimetype) {
     switch (trackMimetype) {
       case 'audio/mpeg': return 'audio/mp3';
+      case 'audio/flac': return trackMimetype;
       default: throw new Error(`Not supported track mimemtype ${trackMimetype} to map to HTTP Content-Type.`);
     }
   }
