@@ -22,29 +22,38 @@ module.exports = class TrackStreamer {
     assert.ok(httpResponse);
 
     const track = await this._searcher.searchById(trackId);
-    this._logger.log(this, `Track ${track._id} mimetype = ${track.mimetype}`);
+    const { length: trackFileSize } = await this._dbClient.db()
+      .collection('tracks.files')
+      .findOne({ _id: track.fileId }, { projection: { length: 1 } });
 
-    httpResponse.set('content-type', this._getHttpContentTypeFromMimetype(track.mimetype));
-    httpResponse.set('accept-ranges', 'bytes');
-
-    const bucket = new GridFSBucket(this._dbClient.db(), { chunkSizeBytes: 1024, bucketName: 'tracks' });
+    const chunkSizeBytes = 1024;
+    const bucket = new GridFSBucket(this._dbClient.db(), { chunkSizeBytes, bucketName: 'tracks' });
     const downloadTrackStream = bucket.openDownloadStream(track.fileId);
 
+    httpResponse.set('Content-Length', trackFileSize);
+    httpResponse.set('Content-Type', this._getHttpContentTypeFromMimetype(track.mimetype));
+    httpResponse.set('Accept-Ranges', 'bytes');
+    httpResponse.set('Cache-Control', 'no-cache');
+    httpResponse.writeHead(200);
+
     return new Promise((resolve, reject) => {
+      let chunkNumber = 0;
       downloadTrackStream.on('data', (chunk) => {
-        httpResponse.write(chunk);
+        if (++chunkNumber % chunkSizeBytes === 0) this._logger.log(this, `Writing chunk... ${chunkNumber}`);
       });
 
       downloadTrackStream.on('error', err => {
-        this._logger.log(this, `Error occured in downloading stream for TrackId = ${trackId}. \n ${err}`);
+        this._logger.log(this, `Error occured in downloading stream for TrackId = ${trackId}.\n ${err}`);
         reject(err);
       });
 
       downloadTrackStream.on('end', () => {
         this._logger.log(this, `Streaming for TrackId = ${trackId} ends.`);
-        httpResponse.end();
         resolve();
       });
+
+      downloadTrackStream.pipe(httpResponse);
+      this._logger.log(this, `Track ${track.title} (${track._id}) mimetype = ${track.mimetype}, length = ${trackFileSize} start streaming...`);
     });
   }
 
