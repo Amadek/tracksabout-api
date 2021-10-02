@@ -131,6 +131,7 @@ module.exports = class Searcher {
           fileId: '$albums.tracks.fileId',
           albumId: '$albums._id',
           title: '$albums.tracks.title',
+          duration: '$albums.tracks.duration',
           albumName: '$albums.tracks.albumName',
           artistName: '$albums.tracks.artistName',
           year: '$albums.tracks.year',
