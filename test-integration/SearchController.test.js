@@ -17,6 +17,9 @@ const TrackParserTest = require('./TrackParserTest');
 const { ObjectID } = require('mongodb');
 const SearchResultType = require('../src/Searcher/SearchResultType');
 const TrackStreamer = require('../src/TrackStreamer');
+const TestConfig = require('./TestConfig');
+
+const testConfig = new TestConfig();
 
 describe(SearchController.name, () => {
   describe('GET /search/:phrase', () => {
@@ -42,7 +45,7 @@ describe(SearchController.name, () => {
       await request(app)
         .get('/search/abc')
         .expect(200);
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
 
     it('should return tracks', async () => {
       // ARRANGE
@@ -80,7 +83,7 @@ describe(SearchController.name, () => {
       assert.ok(searchResults.every(t => t.type === SearchResultType.track));
       assert.ok(searchResults.find(t => t.title === searchTrackPhrase));
       assert.ok(searchResults.find(t => t.title === trackBaseData.title));
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
 
     it('should return albums', async () => {
       // ARRANGE
@@ -118,7 +121,7 @@ describe(SearchController.name, () => {
       assert.ok(searchResults.every(a => a.type === SearchResultType.album));
       assert.ok(searchResults.find(a => a.title === searchAlbumPhrase));
       assert.ok(searchResults.find(a => a.title === trackBaseData.albumName));
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
 
     it('should return artists', async () => {
       // ARRANGE
@@ -156,7 +159,7 @@ describe(SearchController.name, () => {
       assert.ok(searchResults.every(a => a.type === SearchResultType.artist));
       assert.ok(searchResults.find(a => a.title === searchArtistPhrase));
       assert.ok(searchResults.find(a => a.title === trackBaseData.artistName));
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
 
     it('should ignore case sensitivity', async () => {
       // ARRANGE
@@ -194,7 +197,7 @@ describe(SearchController.name, () => {
       assert.ok(searchResults.every(t => t.type === SearchResultType.track));
       assert.ok(searchResults.find(t => t.title === searchTrackPhrase));
       assert.ok(searchResults.find(t => t.title === trackBaseData.title));
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
   });
 
   describe('GET /search/id/:id', () => {
@@ -237,7 +240,7 @@ describe(SearchController.name, () => {
       assert.ok(searchByIdResult.fileId);
       assert.ok(searchByIdResult.year);
       assert.ok(searchByIdResult.mimetype);
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
 
     it('should return album by id', async () => {
       // ARRANGE
@@ -284,7 +287,7 @@ describe(SearchController.name, () => {
       assert.ok(searchByIdResult.tracks[0].mimetype);
       assert.ok(searchByIdResult.tracks[0].number);
       assert.ok(searchByIdResult.artistId);
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
 
     it('should return artist by id', async () => {
       // ARRANGE
@@ -324,7 +327,7 @@ describe(SearchController.name, () => {
       assert.strictEqual(searchByIdResult.albums[0].name, trackBaseData.albumName);
       assert.ok(searchByIdResult.albums[0].year);
       assert.strictEqual(searchByIdResult.albums[0].tracks, undefined, "we don't want to send tracks of artist's album, only album's data");
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
   });
 });
 

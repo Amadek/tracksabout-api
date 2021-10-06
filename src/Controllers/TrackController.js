@@ -4,7 +4,6 @@ const { BadRequest } = require('http-errors');
 const Busboy = require('busboy');
 const BusboyInPromiseWrapper = require('./BusboyInPromiseWrapper');
 const Logger = require('./Logger');
-const { GridFSBucket, ObjectID } = require('mongodb');
 
 module.exports = class TrackController {
   /**
@@ -84,10 +83,7 @@ module.exports = class TrackController {
     assert.ok(next);
 
     try {
-      if (!req.params.id || !ObjectID.isValid(req.params.id)) throw new BadRequest('Track Id is empty or invalid!');
-
-      const trackId = new ObjectID(req.params.id);
-      await this._trackStreamer.stream(trackId, res);
+      await this._trackStreamer.stream(req, res);
     } catch (error) {
       next(error);
     }

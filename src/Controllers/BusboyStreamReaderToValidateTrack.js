@@ -25,6 +25,7 @@ module.exports = class BusboyStreamReaderToValidateTrack extends BusboyStreamRea
       throw confilctError;
     }
 
+    fileStream.resume();
     return parsedTrack;
   }
 };

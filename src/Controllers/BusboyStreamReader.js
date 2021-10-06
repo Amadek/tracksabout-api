@@ -10,33 +10,59 @@ module.exports = class BusboyStreamReader {
    */
   constructor (logger) {
     assert.ok(logger); this._logger = logger;
-    this._handlingFileStreams = [];
+    this._handlingStreams = [];
   }
 
+  /**
+   * @virtual
+   * @param {import('stream').Stream} fileStream
+   * @param {*} filename
+   * @param {*} mimetype
+   */
   readFileStream (fileStream, filename, mimetype) {
     assert.ok(fileStream);
     assert.ok(filename);
     assert.ok(mimetype);
 
-    this._handlingFileStreams.push(fileStream);
-
-    this._logger.log(this, 'File stream reading...\n' + JSON.stringify({
-      ended: fileStream._readableState.ended,
-      reading: fileStream._readableState.reading,
-      destroyed: fileStream._readableState.destroyed,
-      closed: fileStream._readableState.closed
-    }, null, 2));
+    this.addHandlingStream(fileStream);
   }
 
+  /**
+   * @public
+   */
   cancellAllStreamsReading () {
-    for (const fileStream of this._handlingFileStreams) {
-      const fileStreamResumeResult = fileStream.resume();
-      this._logger.log(this, 'File stream cancelled. \n' + JSON.stringify({
-        ended: fileStreamResumeResult._readableState.ended,
-        reading: fileStreamResumeResult._readableState.reading,
-        destroyed: fileStreamResumeResult._readableState.destroyed,
-        closed: fileStreamResumeResult._readableState.closed
-      }, null, 2));
+    for (const stream of this._handlingStreams) {
+      // instanceof not working here because import('mongodb').GridFSBucketWriteStream is not a real class.
+      if (stream.constructor.name === 'GridFSBucketWriteStream') {
+        stream.abort();
+        this._logger.log(this, 'GridFSBucketWriteStream aborted.' + JSON.stringify({
+          type: stream.constructor.name,
+          ended: stream._writableState.ended,
+          reading: stream._writableState.reading,
+          destroyed: stream._writableState.destroyed,
+          closed: stream._writableState.closed
+        }, null, 2));
+        continue;
+      } else {
+        stream.resume();
+        this._logger.log(this, 'File stream resumed. \n' + JSON.stringify({
+          type: stream.constructor.name,
+          ended: stream._readableState.ended,
+          reading: stream._readableState.reading,
+          destroyed: stream._readableState.destroyed,
+          closed: stream._readableState.closed
+        }, null, 2));
+      }
     }
+  }
+
+  /**
+   * @protected
+   * @param {*} stream
+   * @returns added stream
+   */
+  addHandlingStream (stream) {
+    this._handlingStreams.push(stream);
+    return stream;
   }
 };

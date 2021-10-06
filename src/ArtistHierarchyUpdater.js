@@ -35,7 +35,7 @@ module.exports = class AritstHierarchyUpdater {
     const artistsCount = await db.collection('artists').countDocuments({ name: parsedTrack.artistName });
 
     const artist = artistsCount === 0
-      ? await db.collection('artists').insertOne(this._createArtist(parsedTrack)).then(({ ops }) => ops[0]) // ops = All the documents inserted using insertOne
+      ? await db.collection('artists').insertOne(this._createArtist(parsedTrack)).then(({ insertedId }) => db.collection('artists').findOne({ _id: insertedId }))
       : await db.collection('artists').findOne({ name: parsedTrack.artistName });
 
     let artistAlbum = artist.albums.find(a => a.name === parsedTrack.albumName);

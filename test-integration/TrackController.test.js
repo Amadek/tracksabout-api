@@ -15,6 +15,9 @@ const BusboyStreamReaderToUploadTrack = require('../src/Controllers/BusboyStream
 const TrackParserTest = require('./TrackParserTest');
 const TrackStreamer = require('../src/TrackStreamer.js');
 const Searcher = require('../src/Searcher/Searcher.js');
+const TestConfig = require('./TestConfig');
+
+const testConfig = new TestConfig();
 
 describe('TrackController', () => {
   describe('POST /', () => {
@@ -50,7 +53,7 @@ describe('TrackController', () => {
       assert.strictEqual(artist.albums[0].tracks[0].title, trackBaseData.title);
       assert.ok(artist.albums[0].tracks[0].fileId);
       assert.ok(artist.albums[0].tracks[0].number);
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
 
     it('should return BadRequest when no file was uploading', async () => {
       // ARRANGE
@@ -65,7 +68,7 @@ describe('TrackController', () => {
       await request(app)
         .post('/')
         .expect(400);
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
 
     it('should return Conflict when track with specified name already exists', async () => {
       // ARRANGE
@@ -88,7 +91,7 @@ describe('TrackController', () => {
         .set('Content-type', 'multipart/form-data')
         .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
         .expect(409);
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
 
     it('should return Conflict when uploading duplicate tracks', async () => {
       // ARRANGE
@@ -113,10 +116,13 @@ describe('TrackController', () => {
       // Możliwe że po zrobieniu stream.pipe() coś się dzieje że resume już nie do końca działa.
       // Może być też tak że cały strumień jest już w pamięci i dlatego pierwszy plik uploaduje się do bazy danych, pomimo stream.resume().
       // Trzeba bardziej się doedukować z działania streamów. Kod poniżej na razie wywołuje fail testu.
+      // UPDATE samo anulowanie strumienia nie wystaczy, artysta doda się do bazy przed uploadowaniem pliku, tak było to zamierzyne i trzeba po prostu go usunąć
+      // w takiej syutacji, trzeba zaimplementować mechanizm Undo.
+      // To gdybanie na temat stanów streamu po anulowaniu myślę że można zakończyć, po implementacji patternu Undo, test powinien już przechodzić.
       // const artistsCount = await dbClient.db().collection('artists')
-      //  .countDocuments({ name: trackBaseData.artistName });
+      //   .countDocuments({ name: trackBaseData.artistName });
       // assert.strictEqual(artistsCount, 0);
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
   });
 
   describe('POST /validate', () => {
@@ -142,7 +148,7 @@ describe('TrackController', () => {
       assert.strictEqual(parsedTrack.albumName, trackBaseData.albumName);
       assert.strictEqual(parsedTrack.artistName, trackBaseData.artistName);
       assert.ok(parsedTrack.number);
-    });
+    }).timeout(testConfig.testRunTimeout);
 
     it('should return OK when track has not artist\'s album yet in database', async () => {
       // ARRANGE
@@ -178,7 +184,7 @@ describe('TrackController', () => {
       assert.strictEqual(parsedTrack.albumName, newTrack.albumName);
       assert.strictEqual(parsedTrack.artistName, newTrack.artistName);
       assert.ok(parsedTrack.number);
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
 
     it('should return Conflict when track already exists in artist\'s album in database', async () => {
       // ARRANGE
@@ -208,7 +214,7 @@ describe('TrackController', () => {
         .set('Content-type', 'multipart/form-data')
         .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
         .expect(409);
-    }).timeout(5000);
+    }).timeout(testConfig.testRunTimeout);
   });
 
   describe('GET /stream/:id', () => {

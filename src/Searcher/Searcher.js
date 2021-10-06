@@ -19,13 +19,11 @@ module.exports = class Searcher {
 
     this._logger.log(this, 'Search started.');
 
-    let searchResults = [
+    const searchResults = [
       await this._searchTracks(trackTitleRegexp),
       await this._searchAlbums(trackTitleRegexp),
       await this._searchArtists(trackTitleRegexp)
-    ];
-
-    searchResults = searchResults.flat();
+    ].flat();
 
     this._logger.log(this, `Search completed. Found ${searchResults.length} elements.`);
 

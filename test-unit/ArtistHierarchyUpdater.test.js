@@ -1,7 +1,7 @@
 /* global describe it */
 const AritstHierarchyUpdater = require('../src/ArtistHierarchyUpdater');
 const assert = require('assert');
-const { ObjectID } = require('mongodb');
+const { ObjectID, ObjectId } = require('mongodb');
 const Logger = require('../src/Controllers/Logger');
 
 describe('ArtistHierarchyUpdater', () => {
@@ -13,16 +13,23 @@ describe('ArtistHierarchyUpdater', () => {
         albumName: new ObjectID().toHexString(),
         artistName: new ObjectID().toHexString()
       };
-      const dbClient = {
-        db: () => ({
-          collection: () => ({
-            countDocuments: () => Promise.resolve(0),
-            insertOne: obj => Promise.resolve({ ops: [obj] }),
-            findOne: () => Promise.resolve(),
-            updateOne: (_filter, { $set }) => Promise.resolve($set)
+      const dbClient = (() => {
+        let insertedObj = null;
+        return {
+          db: () => ({
+            collection: () => ({
+              countDocuments: () => Promise.resolve(0),
+              insertOne: obj => {
+                insertedObj = obj;
+                insertedObj._id = new ObjectId();
+                return Promise.resolve({ insertedId: insertedObj._id });
+              },
+              findOne: ({ _id }) => _id === insertedObj._id ? Promise.resolve(insertedObj) : null,
+              updateOne: (_filter, { $set }) => Promise.resolve($set)
+            })
           })
-        })
-      };
+        };
+      })();
       const updater = new AritstHierarchyUpdater(dbClient, new Logger());
       // ACT
       const result = await updater.update(uploadedTrack);

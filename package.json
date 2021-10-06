@@ -24,7 +24,7 @@
     "express": "^4.17.1",
     "express-fileupload": "^1.2.0",
     "http-errors": "^1.7.2",
-    "mongodb": "^3.6.5",
+    "mongodb": "^4.1.2",
     "music-metadata": "^7.5.0"
   },
   "devDependencies": {

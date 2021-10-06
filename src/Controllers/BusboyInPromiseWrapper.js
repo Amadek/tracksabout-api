@@ -10,13 +10,13 @@ module.exports = class BusboyInPromiseWrapper {
   }
 
   /**
-   * @param {import('express').Request} req
+   * @param {import('express').Request} httpRequest
    * @param {*} busboy
    * @param {import('./BusboyStreamReader')} busboyStreamReader
    * @returns {Promise}
    */
-  handle (req, busboy, busboyStreamReader) {
-    assert.ok(req);
+  handle (httpRequest, busboy, busboyStreamReader) {
+    assert.ok(httpRequest);
     assert.ok(busboy);
     assert.ok(busboyStreamReader);
 
@@ -32,8 +32,6 @@ module.exports = class BusboyInPromiseWrapper {
           const fileStream = file;
           const promise = Promise.resolve()
             .then(() => busboyStreamReader.readFileStream(fileStream, filename, mimetype))
-            // We do not need the stream any more so we are ending using it.
-            .then(readFileStreamResult => { fileStream.resume(); return readFileStreamResult; })
             // We catch error here because:
             // 1. Promise.all in busboy.onFinish is created after busboy.onFile ends, which ends on end of stream.
             //    Before file stream ends, if error occur there would be no error handling.
@@ -44,36 +42,28 @@ module.exports = class BusboyInPromiseWrapper {
               // When in at least one stream handling error occur, we cancell all streams reading -> all or none method.
               busboyStreamReader.cancellAllStreamsReading();
               reject(err);
-              return err;
+              throw err;
             });
 
           readFileStreamPromises.push(promise);
         })
-        .on('finish', () => {
-          this._logger.log(this, 'Last file stream ends.');
-          Promise.all(readFileStreamPromises)
-            .then(results => {
-              const err = results.find(r => r instanceof Error);
-              if (err) {
-                err.occuredInFileReading = true;
-                throw err;
-              }
-
-              return results;
-            })
-            .then(results => resolve(results))
-            .catch(err => {
-              if (err.occuredInFileReading) return;
-              this._logger.log(this, 'Error in finish handler: ' + err.message);
-              reject(err);
-            });
+        .on('finish', async () => {
+          try {
+            this._logger.log(this, 'File streams from request loaded to memory by Busboy.');
+            const readFileResults = await Promise.all(readFileStreamPromises);
+            this._logger.log(this, 'Busboy finish after waiting promise');
+            resolve(readFileResults);
+          } catch (error) {
+            this._logger.log(this, 'Error in finish handler: ' + error.message);
+            reject(error);
+          }
         })
         .on('error', err => {
           this._logger.log(this, 'Error in error handler: ' + err.message);
           reject(err);
         });
 
-      req.pipe(busboy);
+      httpRequest.pipe(busboy);
     });
   }
 };
