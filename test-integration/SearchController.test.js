@@ -61,7 +61,7 @@ describe(SearchController.name, () => {
       await request(app)
         .post('/track')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       trackBaseData.title += new ObjectID().toHexString();
@@ -70,7 +70,7 @@ describe(SearchController.name, () => {
       await request(app)
         .post('/track')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       // ACT, ASSERT
@@ -99,7 +99,7 @@ describe(SearchController.name, () => {
       await request(app)
         .post('/track')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       trackBaseData.albumName += new ObjectID().toHexString();
@@ -108,7 +108,7 @@ describe(SearchController.name, () => {
       await request(app)
         .post('/track')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       // ACT, ASSERT
@@ -137,7 +137,7 @@ describe(SearchController.name, () => {
       await request(app)
         .post('/track')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       trackBaseData.artistName += new ObjectID().toHexString();
@@ -146,7 +146,7 @@ describe(SearchController.name, () => {
       await request(app)
         .post('/track')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       // ACT, ASSERT
@@ -175,7 +175,7 @@ describe(SearchController.name, () => {
       await request(app)
         .post('/track')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       trackBaseData.title += new ObjectID().toHexString();
@@ -184,7 +184,7 @@ describe(SearchController.name, () => {
       await request(app)
         .post('/track')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       // ACT, ASSERT
@@ -215,7 +215,7 @@ describe(SearchController.name, () => {
       await request(app)
         .post('/track')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       const { searchResults } = await request(app)
@@ -256,7 +256,7 @@ describe(SearchController.name, () => {
       await request(app)
         .post('/track')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       const { searchResults } = await request(app)
@@ -303,7 +303,7 @@ describe(SearchController.name, () => {
       await request(app)
         .post('/track')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       const { searchResults } = await request(app)

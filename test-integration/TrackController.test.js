@@ -2,7 +2,7 @@
 const assert = require('assert');
 const express = require('express');
 const request = require('supertest');
-const { ObjectID } = require('mongodb');
+const { ObjectId } = require('mongodb');
 const DbConnector = require('../src/DbConnector.js');
 const TrackController = require('../src/Controllers/TrackController');
 const TrackUploader = require('../src/TrackUploader');
@@ -13,9 +13,11 @@ const TrackPresenceValidator = require('../src/TrackPresenceValidator.js');
 const BusboyStreamReaderToValidateTrack = require('../src/Controllers/BusboyStreamReaderToValidateTrack.js');
 const BusboyStreamReaderToUploadTrack = require('../src/Controllers/BusboyStreamReaderToUploadTrack.js');
 const TrackParserTest = require('./TrackParserTest');
+const TrackParser = require('../src/TrackParser');
 const TrackStreamer = require('../src/TrackStreamer.js');
 const Searcher = require('../src/Searcher/Searcher.js');
 const TestConfig = require('./TestConfig');
+const fsPromises = require('fs/promises');
 
 const testConfig = new TestConfig();
 
@@ -25,9 +27,9 @@ describe('TrackController', () => {
       // ARRANGE
       const dbClient = await new DbConnector(new Config()).connect();
       const trackBaseData = {
-        title: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        artistName: new ObjectID().toHexString()
+        title: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        artistName: new ObjectId().toHexString()
       };
       const app = createApp(dbClient, trackBaseData);
 
@@ -35,7 +37,7 @@ describe('TrackController', () => {
       const { trackIds } = await request(app)
         .post('/')
         .set('Content-type', 'multipart/form-data')
-        .attach('file1', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200)
         .then(({ body }) => ({ trackIds: body }));
 
@@ -43,7 +45,7 @@ describe('TrackController', () => {
       assert.ok(Array.isArray(trackIds));
 
       const artist = await dbClient.db().collection('artists')
-        .findOne({ 'albums.tracks.fileId': new ObjectID(trackIds[0]) });
+        .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
 
       assert.ok(artist);
       assert.strictEqual(artist.name, trackBaseData.artistName);
@@ -55,13 +57,67 @@ describe('TrackController', () => {
       assert.ok(artist.albums[0].tracks[0].number);
     }).timeout(testConfig.testRunTimeout);
 
+    it('should upload tracks with metadata to DB', async () => {
+      // ARRANGE
+      const dbClient = await new DbConnector(new Config()).connect();
+      const app = createApp(dbClient);
+      const { size: trackFileSize } = await fsPromises.stat(testConfig.flacFilePath);
+
+      await dbClient.db().collection('artists').deleteMany({ 'albums.tracks.title': testConfig.flacFileMetadata.title });
+
+      // ACT
+      const { trackIds } = await request(app)
+        .post('/')
+        .timeout(testConfig.uploadFlacFileTestTimeout)
+        .set('Content-type', 'multipart/form-data')
+        .attach('file1', testConfig.flacFilePath, { contentType: 'audio/flac' })
+        .expect(200)
+        .then(({ body }) => ({ trackIds: body }));
+
+      try {
+        // ASSERT
+        assert.ok(Array.isArray(trackIds));
+
+        const artist = await dbClient.db().collection('artists')
+          .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
+
+        assert.ok(artist);
+        assert.strictEqual(artist.name, testConfig.flacFileMetadata.artistName);
+        assert.strictEqual(artist.albums.length, 1);
+        assert.strictEqual(artist.albums[0].name, testConfig.flacFileMetadata.albumName);
+        assert.strictEqual(artist.albums[0].tracks.length, 1);
+        assert.strictEqual(artist.albums[0].tracks[0].title, testConfig.flacFileMetadata.title);
+        assert.ok(artist.albums[0].tracks[0].fileId);
+        assert.ok(artist.albums[0].tracks[0].number);
+
+        const { length: trackFileSizeFromDb } = await dbClient.db().collection('tracks.files').findOne({ _id: artist.albums[0].tracks[0].fileId });
+        assert.strictEqual(trackFileSizeFromDb, trackFileSize);
+      } finally {
+        await dbClient.db().collection('artists').deleteMany({ 'albums.tracks._id': new ObjectId(trackIds[0]) });
+      }
+    }).timeout(testConfig.uploadFlacFileTestTimeout * 2);
+
+    it('should return Bad Request when track is not a valid FLAC', async () => {
+      // ARRANGE
+      const dbClient = await new DbConnector(new Config()).connect();
+      const app = createApp(dbClient);
+
+      // ACT
+      await request(app)
+        .post('/')
+        .set('Content-type', 'multipart/form-data')
+        .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
+        // ASSERT
+        .expect(400);
+    }).timeout(testConfig.testRunTimeout);
+
     it('should return BadRequest when no file was uploading', async () => {
       // ARRANGE
       const dbClient = await new DbConnector(new Config()).connect();
       const app = createApp(dbClient, {
-        title: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        artistName: new ObjectID().toHexString()
+        title: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        artistName: new ObjectId().toHexString()
       });
 
       // ACT, ASSERT
@@ -74,22 +130,22 @@ describe('TrackController', () => {
       // ARRANGE
       const dbClient = await new DbConnector(new Config()).connect();
       const app = createApp(dbClient, {
-        title: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        artistName: new ObjectID().toHexString()
+        title: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        artistName: new ObjectId().toHexString()
       });
 
       // ACT, ASSERT
       await request(app)
         .post('/')
         .set('Content-type', 'multipart/form-data')
-        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200);
 
       await request(app)
         .post('/')
         .set('Content-type', 'multipart/form-data')
-        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(409);
     }).timeout(testConfig.testRunTimeout);
 
@@ -97,9 +153,9 @@ describe('TrackController', () => {
       // ARRANGE
       const dbClient = await new DbConnector(new Config()).connect();
       const trackBaseData = {
-        title: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        artistName: new ObjectID().toHexString()
+        title: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        artistName: new ObjectId().toHexString()
       };
       const app = createApp(dbClient, trackBaseData);
 
@@ -107,8 +163,8 @@ describe('TrackController', () => {
       await request(app)
         .post('/')
         .set('Content-type', 'multipart/form-data')
-        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
-        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
+        .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(409);
 
       // TODO trzeba zrobić lepszą obsługę błędów żeby przerwać operacje uplodowania pierwszego pliku.
@@ -130,9 +186,9 @@ describe('TrackController', () => {
       // ARANGE
       const dbClient = await new DbConnector(new Config()).connect();
       const trackBaseData = {
-        title: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        artistName: new ObjectID().toHexString()
+        title: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        artistName: new ObjectId().toHexString()
       };
       const app = createApp(dbClient, trackBaseData);
 
@@ -140,7 +196,7 @@ describe('TrackController', () => {
       const parsedTrack = await request(app)
         .post('/validate')
         .set('Content-type', 'multipart/form-data')
-        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200)
         .then(({ body }) => body);
 
@@ -153,12 +209,12 @@ describe('TrackController', () => {
     it('should return OK when track has not artist\'s album yet in database', async () => {
       // ARRANGE
       const existingTrack = {
-        title: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        artistName: new ObjectID().toHexString()
+        title: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        artistName: new ObjectId().toHexString()
       };
       const newTrack = {
-        title: new ObjectID().toHexString(),
+        title: new ObjectId().toHexString(),
         albumName: existingTrack.albumName,
         artistName: existingTrack.artistName
       };
@@ -168,7 +224,7 @@ describe('TrackController', () => {
       await request(app)
         .post('/')
         .set('Content-type', 'multipart/form-data')
-        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' });
+        .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' });
 
       app = createApp(dbClient, newTrack);
 
@@ -176,7 +232,7 @@ describe('TrackController', () => {
       const parsedTrack = await request(app)
         .post('/validate')
         .set('Content-type', 'multipart/form-data')
-        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(200)
         .then(({ body }) => body);
 
@@ -189,9 +245,9 @@ describe('TrackController', () => {
     it('should return Conflict when track already exists in artist\'s album in database', async () => {
       // ARRANGE
       const existingTrack = {
-        title: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        artistName: new ObjectID().toHexString()
+        title: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        artistName: new ObjectId().toHexString()
       };
       const newTrack = {
         title: existingTrack.title,
@@ -204,7 +260,7 @@ describe('TrackController', () => {
       await request(app)
         .post('/')
         .set('Content-type', 'multipart/form-data')
-        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' });
+        .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' });
 
       app = createApp(dbClient, newTrack);
 
@@ -212,7 +268,7 @@ describe('TrackController', () => {
       await request(app)
         .post('/validate')
         .set('Content-type', 'multipart/form-data')
-        .attach('flac', './src/resources/fake.wav', { contentType: 'audio/flac' })
+        .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
         .expect(409);
     }).timeout(testConfig.testRunTimeout);
   });
@@ -230,7 +286,7 @@ function createApp (dbClient, trackBaseData) {
   const uploader = new TrackUploader(dbClient, new Logger());
   const streamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const updater = new AritstHierarchyUpdater(dbClient, new Logger());
-  const parser = new TrackParserTest(trackBaseData);
+  const parser = trackBaseData ? new TrackParserTest(trackBaseData) : new TrackParser(new Logger());
   const validator = new TrackPresenceValidator(dbClient, new Logger());
   const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(parser, validator, new Logger());
   const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(parser, updater, uploader, new Logger());
