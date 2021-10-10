@@ -1,12 +1,14 @@
 const assert = require('assert');
 const { GridFSBucket, ObjectId } = require('mongodb');
+const UndoRedo = require('./UndoRedo');
 
-module.exports = class TrackUploader {
+module.exports = class TrackUploader extends UndoRedo {
   /**
    * @param {import('mongodb').MongoClient} dbClient
    * @param {import('./Controllers/Logger')} logger
    */
   constructor (dbClient, logger) {
+    super();
     assert.ok(dbClient);
     assert.ok(logger);
     this._dbClient = dbClient;
@@ -14,22 +16,39 @@ module.exports = class TrackUploader {
     this._bucket = new GridFSBucket(this._dbClient.db(), { chunkSizeBytes: 1024, bucketName: 'tracks' });
   }
 
-  async upload (parsedTrack, trackStream, streamReader) {
+  prepare (parsedTrack, trackStream, streamReader) {
+    assert.ok(parsedTrack); this._parsedTrack = parsedTrack;
+    assert.ok(trackStream); this._trackStream = trackStream;
+    assert.ok(streamReader); this._streamReader = streamReader;
+  }
+
+  async undo () {
+    this._logger.log(this, 'Rollbacking changes...');
+
+    const updateTrackFileIdResult = await this._dbClient.db().collection('artists').updateMany(
+      {},
+      { $set: { 'albums.$[].tracks.$[track].fileId': null } },
+      { arrayFilters: [{ 'track._id': this._parsedTrack._id }] }
+    );
+    this._logger.log(this, 'Rollback update track file id result:\n' + JSON.stringify(updateTrackFileIdResult, null, 2));
+
+    const deleteTrackFileResult = await this._bucket.delete(this._uploadedTrackFileId);
+    this._logger.log(this, 'Rollback upload track file:\n' + JSON.stringify(deleteTrackFileResult, null, 2));
+  }
+
+  async redo () {
     this._logger.log(this, 'Upload begins.');
-    assert.ok(parsedTrack);
-    assert.ok(trackStream);
-    assert.ok(streamReader);
 
-    this._logger.log(this, 'ParsedTrack:\n' + JSON.stringify(parsedTrack, null, 2));
+    this._logger.log(this, 'ParsedTrack:\n' + JSON.stringify(this._parsedTrack, null, 2));
 
-    const trackMetadata = this._getTrackMetadata(parsedTrack);
-    const uploadedTrackFileId = await this._uploadTrack(trackStream, trackMetadata, streamReader);
+    const trackMetadata = this._getTrackMetadata(this._parsedTrack);
+    this._uploadedTrackFileId = await this._uploadTrack(this._trackStream, trackMetadata, this._streamReader);
 
     // https://docs.mongodb.com/manual/reference/operator/update/positional-filtered/
     const updateTrackFileIdResult = await this._dbClient.db().collection('artists').updateMany(
       {},
-      { $set: { 'albums.$[].tracks.$[track].fileId': uploadedTrackFileId } },
-      { arrayFilters: [{ 'track._id': parsedTrack._id }] }
+      { $set: { 'albums.$[].tracks.$[track].fileId': this._uploadedTrackFileId } },
+      { arrayFilters: [{ 'track._id': this._parsedTrack._id }] }
     );
 
     this._logger.log(this, 'Update track file id result:\n' + JSON.stringify(updateTrackFileIdResult, null, 2));
@@ -37,7 +56,7 @@ module.exports = class TrackUploader {
     const findTrackResult = await this._dbClient.db().collection('artists').aggregate([
       { $unwind: '$albums' },
       { $unwind: '$albums.tracks' },
-      { $match: { 'albums.tracks._id': parsedTrack._id } },
+      { $match: { 'albums.tracks._id': this._parsedTrack._id } },
       { $project: { track: '$albums.tracks', _id: 0 } }
     ]).next();
 

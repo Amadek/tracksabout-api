@@ -47,7 +47,8 @@ module.exports = class BusboyStreamReaderToUploadTrack extends BusboyStreamReade
 
     const updateArtistResult = await this._artistHierarchyUpdater.update(parsedTrack);
     if (!updateArtistResult.updated) throw new Conflict(updateArtistResult.message);
-    const uploadedTrack = await this._trackUploader.upload(parsedTrack, streamToUploadTrack, this);
+    this._trackUploader.prepare(parsedTrack, streamToUploadTrack, this);
+    const uploadedTrack = await this._trackUploader.redo();
 
     return uploadedTrack.fileId;
   }

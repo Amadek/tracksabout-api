@@ -37,10 +37,10 @@ module.exports = class BusboyInPromiseWrapper {
             //    Before file stream ends, if error occur there would be no error handling.
             //    Promise.all would not be created. Noone waits or catch errors in created Promise.
             // 2. When error is catched here, we need to return it to notify Promise.all to do nothing, because error is already handled.
-            .catch(err => {
+            .catch(async err => {
               this._logger.log(this, 'Error in file handler: ' + err.message);
               // When in at least one stream handling error occur, we cancell all streams reading -> all or none method.
-              busboyStreamReader.cancellAllStreamsReading();
+              await busboyStreamReader.cancellAllStreamsReading();
               reject(err);
               throw err;
             });

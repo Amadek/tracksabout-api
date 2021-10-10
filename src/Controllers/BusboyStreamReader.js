@@ -30,11 +30,12 @@ module.exports = class BusboyStreamReader {
   /**
    * @public
    */
-  cancellAllStreamsReading () {
+  async cancellAllStreamsReading () {
     for (const stream of this._handlingStreams) {
       // instanceof not working here because import('mongodb').GridFSBucketWriteStream is not a real class.
       if (stream.constructor.name === 'GridFSBucketWriteStream') {
-        stream.abort();
+        if (!stream.state.streamEnd) await stream.abort();
+        stream.end();
         this._logger.log(this, 'GridFSBucketWriteStream aborted.' + JSON.stringify({
           type: stream.constructor.name,
           ended: stream._writableState.ended,
@@ -63,6 +64,7 @@ module.exports = class BusboyStreamReader {
    */
   addHandlingStream (stream) {
     this._handlingStreams.push(stream);
+    this._logger.log(this, `Stream ${stream.constructor.name} added to handle.`);
     return stream;
   }
 };
