@@ -14,41 +14,48 @@ module.exports = class TrackUploader extends UndoRedo {
     this._dbClient = dbClient;
     this._logger = logger;
     this._bucket = new GridFSBucket(this._dbClient.db(), { chunkSizeBytes: 1024, bucketName: 'tracks' });
-  }
 
-  prepare (parsedTrack, trackStream, streamReader) {
-    assert.ok(parsedTrack); this._parsedTrack = parsedTrack;
-    assert.ok(trackStream); this._trackStream = trackStream;
-    assert.ok(streamReader); this._streamReader = streamReader;
+    this._uploadedTrackFileId = null;
+    this._updatedTrackId = null;
   }
 
   async undo () {
-    this._logger.log(this, 'Rollbacking changes...');
+    this._logger.log(this, 'Rollbacking changes...\n' + JSON.stringify({
+      _updatedtrackId: this._updatedTrackId,
+      _uploadedTrackFileId: this._uploadedTrackFileId
+    }, null, 2));
 
-    const updateTrackFileIdResult = await this._dbClient.db().collection('artists').updateMany(
-      {},
-      { $set: { 'albums.$[].tracks.$[track].fileId': null } },
-      { arrayFilters: [{ 'track._id': this._parsedTrack._id }] }
-    );
-    this._logger.log(this, 'Rollback update track file id result:\n' + JSON.stringify(updateTrackFileIdResult, null, 2));
+    if (this._updatedTrackId) {
+      const updateTrackFileIdResult = await this._dbClient.db().collection('artists').updateMany(
+        {},
+        { $set: { 'albums.$[].tracks.$[track].fileId': null } },
+        { arrayFilters: [{ 'track._id': this._updatedTrackId }] }
+      );
+      this._logger.log(this, 'Rollback update track file id result:\n' + JSON.stringify(updateTrackFileIdResult, null, 2));
+    }
 
-    const deleteTrackFileResult = await this._bucket.delete(this._uploadedTrackFileId);
-    this._logger.log(this, 'Rollback upload track file:\n' + JSON.stringify(deleteTrackFileResult, null, 2));
+    if (this._uploadedTrackFileId && await this._bucket.find({ _id: this._uploadedTrackFileId }).count() !== 0) {
+      await this._bucket.delete(this._uploadedTrackFileId);
+      this._logger.log(this, 'Rollback upload track file finished.');
+    }
   }
 
-  async redo () {
+  async upload (parsedTrack, trackStream, streamReader) {
+    assert.ok(parsedTrack);
+    assert.ok(trackStream);
+    assert.ok(streamReader);
+
     this._logger.log(this, 'Upload begins.');
+    this._logger.log(this, 'ParsedTrack:\n' + JSON.stringify(parsedTrack, null, 2));
 
-    this._logger.log(this, 'ParsedTrack:\n' + JSON.stringify(this._parsedTrack, null, 2));
-
-    const trackMetadata = this._getTrackMetadata(this._parsedTrack);
-    this._uploadedTrackFileId = await this._uploadTrack(this._trackStream, trackMetadata, this._streamReader);
+    const trackMetadata = this._getTrackMetadata(parsedTrack);
+    const uploadedTrackFileId = await this._uploadTrack(trackStream, trackMetadata, streamReader);
 
     // https://docs.mongodb.com/manual/reference/operator/update/positional-filtered/
     const updateTrackFileIdResult = await this._dbClient.db().collection('artists').updateMany(
       {},
-      { $set: { 'albums.$[].tracks.$[track].fileId': this._uploadedTrackFileId } },
-      { arrayFilters: [{ 'track._id': this._parsedTrack._id }] }
+      { $set: { 'albums.$[].tracks.$[track].fileId': uploadedTrackFileId } },
+      { arrayFilters: [{ 'track._id': parsedTrack._id }] }
     );
 
     this._logger.log(this, 'Update track file id result:\n' + JSON.stringify(updateTrackFileIdResult, null, 2));
@@ -56,10 +63,11 @@ module.exports = class TrackUploader extends UndoRedo {
     const findTrackResult = await this._dbClient.db().collection('artists').aggregate([
       { $unwind: '$albums' },
       { $unwind: '$albums.tracks' },
-      { $match: { 'albums.tracks._id': this._parsedTrack._id } },
-      { $project: { track: '$albums.tracks', _id: 0 } }
+      { $match: { 'albums.tracks._id': parsedTrack._id } },
+      { $project: { track: '$albums.tracks' } }
     ]).next();
 
+    this._updatedTrackId = findTrackResult.track._id;
     this._logger.log(this, 'Track with updated fileId:\n' + JSON.stringify(findTrackResult.track, null, 2));
 
     return findTrackResult.track;
@@ -76,18 +84,22 @@ module.exports = class TrackUploader extends UndoRedo {
   }
 
   _uploadTrack (trackStream, trackMetadata, streamReader) {
-    const trackFileName = new ObjectId().toHexString();
-    const uploadTrackStream = streamReader.addHandlingStream(this._bucket.openUploadStream(trackFileName, { metadata: trackMetadata }));
+    const trackFileId = new ObjectId();
+    const uploadTrackStream = streamReader.addHandlingStream(this._bucket.openUploadStreamWithId(trackFileId, trackFileId.toHexString(), { metadata: trackMetadata }));
+    this._uploadedTrackFileId = trackFileId;
+    this._logger.log(this, 'Reserved track file id: ' + trackFileId.toHexString());
 
     return new Promise((resolve, reject) => {
       uploadTrackStream
         .on('finish', () => {
-          const uploadedTrackFileId = uploadTrackStream.id;
-          this._logger.log(this, `Upload ends. Track with fileId = ${uploadedTrackFileId} uploaded to mongo.`);
+          this._logger.log(this, `Upload ends. Track with fileId = ${trackFileId} uploaded to mongo.`);
           this._logger.log(this, `Track metadata:\n${JSON.stringify(trackMetadata, null, 2)}`);
-          resolve(uploadedTrackFileId);
+          resolve(trackFileId);
         })
-        .on('error', err => reject(err));
+        .on('error', err => {
+          this._logger.log(this, 'ERROR IN GRIDFS ERROR HANDLER, AP NEED TO FIX THAT (występuje wtedy kiedy jest anulowany strumien uploadu, nie wiadomo jeszcze dlaczego, pozostawia śmieci w bazie): ' + err.message);
+          resolve(trackFileId);
+        });
 
       trackStream.pipe(uploadTrackStream);
     });

@@ -11,6 +11,7 @@ module.exports = class BusboyStreamReader {
   constructor (logger) {
     assert.ok(logger); this._logger = logger;
     this._handlingStreams = [];
+    this._actionsToUndo = [];
   }
 
   /**
@@ -30,30 +31,29 @@ module.exports = class BusboyStreamReader {
   /**
    * @public
    */
-  async cancellAllStreamsReading () {
+  async cancellAllHandlingStreams () {
     for (const stream of this._handlingStreams) {
       // instanceof not working here because import('mongodb').GridFSBucketWriteStream is not a real class.
       if (stream.constructor.name === 'GridFSBucketWriteStream') {
-        if (!stream.state.streamEnd) await stream.abort();
-        stream.end();
-        this._logger.log(this, 'GridFSBucketWriteStream aborted.' + JSON.stringify({
-          type: stream.constructor.name,
-          ended: stream._writableState.ended,
-          reading: stream._writableState.reading,
-          destroyed: stream._writableState.destroyed,
-          closed: stream._writableState.closed
-        }, null, 2));
+        this._logger.log(this, 'GridFSBucketWriteStream aborting...');
+        if (!stream.state.streamEnd) {
+          await stream.abort();
+          this._logger.log(this, 'GridFSBucketWriteStream aborted.');
+        }
+        this._logger.log(this, 'GridFSBucketWriteStream not aborted beacuse is ended.');
         continue;
       } else {
         stream.resume();
-        this._logger.log(this, 'File stream resumed. \n' + JSON.stringify({
-          type: stream.constructor.name,
-          ended: stream._readableState.ended,
-          reading: stream._readableState.reading,
-          destroyed: stream._readableState.destroyed,
-          closed: stream._readableState.closed
-        }, null, 2));
+        this._logger.log(this, `Stream ${stream.constructor.name} resumed.`);
       }
+    }
+  }
+
+  async undoPerformedActions () {
+    const actionsToUndo = this._actionsToUndo.slice().reverse(); // slice() copies an array. We need to rollback changes in reverse mode.
+    this._logger.log(this, `Actions to undo:\n${actionsToUndo.map(a => a.constructor.name).join('\n')}`);
+    for (const actionToUndo of actionsToUndo) {
+      await actionToUndo.undo();
     }
   }
 
@@ -66,5 +66,13 @@ module.exports = class BusboyStreamReader {
     this._handlingStreams.push(stream);
     this._logger.log(this, `Stream ${stream.constructor.name} added to handle.`);
     return stream;
+  }
+
+  /**
+   * @protected
+   * @param {import('../UndoRedo')} action
+   */
+  addActionToUndo (action) {
+    this._actionsToUndo.push(action);
   }
 };

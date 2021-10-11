@@ -7,9 +7,7 @@ const Searcher = require('../src/Searcher/Searcher');
 const Logger = require('../src/Controllers/Logger');
 const DbConnector = require('../src/DbConnector');
 const Config = require('../src/Config');
-const TrackUploader = require('../src/TrackUploader');
 const TrackPresenceValidator = require('../src/TrackPresenceValidator');
-const AritstHierarchyUpdater = require('../src/ArtistHierarchyUpdater');
 const BusboyStreamReaderToValidateTrack = require('../src/Controllers/BusboyStreamReaderToValidateTrack');
 const BusboyStreamReaderToUploadTrack = require('../src/Controllers/BusboyStreamReaderToUploadTrack');
 const TrackController = require('../src/Controllers/TrackController');
@@ -18,6 +16,7 @@ const { ObjectId } = require('mongodb');
 const SearchResultType = require('../src/Searcher/SearchResultType');
 const TrackStreamer = require('../src/TrackStreamer');
 const TestConfig = require('./TestConfig');
+const FileLifetimeActionsFactory = require('../src/FileLifetimeActions/FileLifetimeActionsFactory');
 
 const testConfig = new TestConfig();
 
@@ -386,11 +385,10 @@ function createSearchController (dbClient) {
 function createTrackController (dbClient, trackBaseData) {
   const trackParser = new TrackParserTest(trackBaseData);
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
-  const trackUploader = new TrackUploader(dbClient, new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
-  const artistHierarchyUpdater = new AritstHierarchyUpdater(dbClient, new Logger());
+  const fileLifetimeActionsFactory = new FileLifetimeActionsFactory(dbClient);
   const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
-  const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, artistHierarchyUpdater, trackUploader, new Logger());
+  const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, fileLifetimeActionsFactory, new Logger());
 
   return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, trackStreamer, new Logger());
 }

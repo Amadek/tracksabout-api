@@ -6,15 +6,15 @@ const { PassThrough } = require('stream');
 module.exports = class BusboyStreamReaderToUploadTrack extends BusboyStreamReader {
   /**
    * @param {import('../ITrackParser')} trackParser
-   * @param {import('../ArtistHierarchyUpdater')} artistHierarchyUpdater
-   * @param {import('../TrackUploader')} trackUploader
+   * @param {import('../FileLifetimeActions/FileLifetimeActionsFactory')} fileLifetimeActionsFactory
    * @param {import('./Logger')} logger
    */
-  constructor (trackParser, artistHierarchyUpdater, trackUploader, logger) {
+  constructor (trackParser, fileLifetimeActionsFactory, logger) {
     super(logger);
     assert.ok(trackParser); this._trackParser = trackParser;
-    assert.ok(artistHierarchyUpdater); this._artistHierarchyUpdater = artistHierarchyUpdater;
-    assert.ok(trackUploader); this._trackUploader = trackUploader;
+    assert.ok(fileLifetimeActionsFactory); this._fileLifetimeActionsFactory = fileLifetimeActionsFactory;
+
+    this._updateArtistQueue = Promise.resolve({ updated: false, message: null, updatedArtist: null });
   }
 
   async readFileStream (fileStream, filename, mimetype) {
@@ -44,11 +44,16 @@ module.exports = class BusboyStreamReaderToUploadTrack extends BusboyStreamReade
     } catch (error) {
       throw new BadRequest(error.message);
     }
+    const artistHierarchyUpdater = this._fileLifetimeActionsFactory.createArtistHierarchyUpdater();
+    const trackUploader = this._fileLifetimeActionsFactory.createTrackUploader();
 
-    const updateArtistResult = await this._artistHierarchyUpdater.update(parsedTrack);
+    this._updateArtistQueue = this._updateArtistQueue.then(() => artistHierarchyUpdater.update(parsedTrack));
+    const updateArtistResult = await this._updateArtistQueue;
     if (!updateArtistResult.updated) throw new Conflict(updateArtistResult.message);
-    this._trackUploader.prepare(parsedTrack, streamToUploadTrack, this);
-    const uploadedTrack = await this._trackUploader.redo();
+    this.addActionToUndo(artistHierarchyUpdater);
+
+    this.addActionToUndo(trackUploader);
+    const uploadedTrack = await trackUploader.upload(parsedTrack, streamToUploadTrack, this);
 
     return uploadedTrack.fileId;
   }

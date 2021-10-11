@@ -3,9 +3,7 @@ const express = require('express');
 const TrackController = require('./Controllers/TrackController');
 const TrackParser = require('./TrackParser');
 const TrackPresenceValidator = require('./TrackPresenceValidator');
-const TrackUploader = require('./TrackUploader');
 const { NotFound } = require('http-errors');
-const AritstHierarchyUpdater = require('./ArtistHierarchyUpdater');
 const Logger = require('./Controllers/Logger');
 const Config = require('./Config');
 const BusboyStreamReaderToValidateTrack = require('./Controllers/BusboyStreamReaderToValidateTrack');
@@ -16,6 +14,7 @@ const https = require('https');
 const fs = require('fs/promises');
 const assert = require('assert');
 const TrackStreamer = require('./TrackStreamer');
+const FileLifetimeActionsFactory = require('./FileLifetimeActions/FileLifetimeActionsFactory');
 
 class App {
   constructor (dbConnector, config, logger) {
@@ -61,11 +60,10 @@ class App {
   _createTrackController (dbClient) {
     const trackParser = new TrackParser(new Logger());
     const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
-    const trackUploader = new TrackUploader(dbClient, new Logger());
     const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
-    const artistHierarchyUpdater = new AritstHierarchyUpdater(dbClient, new Logger());
+    const fileLifetimeActionsFactory = new FileLifetimeActionsFactory(dbClient);
     const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
-    const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, artistHierarchyUpdater, trackUploader, new Logger());
+    const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, fileLifetimeActionsFactory, new Logger());
 
     return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, trackStreamer, new Logger());
   }

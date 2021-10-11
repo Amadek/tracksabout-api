@@ -5,8 +5,6 @@ const request = require('supertest');
 const { ObjectId } = require('mongodb');
 const DbConnector = require('../src/DbConnector.js');
 const TrackController = require('../src/Controllers/TrackController');
-const TrackUploader = require('../src/TrackUploader');
-const AritstHierarchyUpdater = require('../src/ArtistHierarchyUpdater');
 const Logger = require('../src/Controllers/Logger');
 const Config = require('../src/Config');
 const TrackPresenceValidator = require('../src/TrackPresenceValidator.js');
@@ -18,6 +16,7 @@ const TrackStreamer = require('../src/TrackStreamer.js');
 const Searcher = require('../src/Searcher/Searcher.js');
 const TestConfig = require('./TestConfig');
 const fsPromises = require('fs/promises');
+const FileLifetimeActionsFactory = require('../src/FileLifetimeActions/FileLifetimeActionsFactory.js');
 
 const testConfig = new TestConfig();
 
@@ -169,7 +168,7 @@ describe('TrackController', () => {
       }
     }).timeout(testConfig.testRunTimeout);
 
-    it('should return Conflict when uploading duplicate tracks', async () => {
+    it('should return Conflict and rollback changes when uploading duplicate tracks', async () => {
       const dbClient = await new DbConnector(new Config()).connect();
       try {
         // ARRANGE
@@ -184,28 +183,20 @@ describe('TrackController', () => {
         await request(app)
           .post('/')
           .set('Content-type', 'multipart/form-data')
-          .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
-          .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
+          .attach('flac', testConfig.flacFilePath, { contentType: 'audio/flac' })
+          .attach('flac', testConfig.flacFilePath, { contentType: 'audio/flac' })
           .expect(409);
 
-        // TODO trzeba zrobić lepszą obsługę błędów żeby przerwać operacje uplodowania pierwszego pliku.
-        // Mimo zrobienia mechanizmu anulowania strumienia za pomocą stream.resume(), strumień pierwszego pliku dalej jest destroyed: false i closed: false.
-        // Możliwe że po zrobieniu stream.pipe() coś się dzieje że resume już nie do końca działa.
-        // Może być też tak że cały strumień jest już w pamięci i dlatego pierwszy plik uploaduje się do bazy danych, pomimo stream.resume().
-        // Trzeba bardziej się doedukować z działania streamów. Kod poniżej na razie wywołuje fail testu.
-        // UPDATE samo anulowanie strumienia nie wystaczy, artysta doda się do bazy przed uploadowaniem pliku, tak było to zamierzyne i trzeba po prostu go usunąć
-        // w takiej syutacji, trzeba zaimplementować mechanizm Undo.
-        // To gdybanie na temat stanów streamu po anulowaniu myślę że można zakończyć, po implementacji patternu Undo, test powinien już przechodzić.
-        // UPDATE 2 oprócz stream.abort() na GridFSUploadStream został dodany stream.end() żeby faktycznie przestał uploadować - po zakończeniu połączenia
-        // z bazą, jeżeli upload się wykonywał, dochodziło do błędu braku połączeniu, nawet po zawołaniu stream.abort(). Wyszło to przy kończeniu połączenia z bazą
-        // w każdym teście.
-        // const artistsCount = await dbClient.db().collection('artists')
-        //   .countDocuments({ name: trackBaseData.artistName });
-        // assert.strictEqual(artistsCount, 0);
+        const artistsCount = await dbClient.db().collection('artists')
+          .countDocuments({ name: trackBaseData.artistName });
+        assert.strictEqual(artistsCount, 0);
+
+        const trackFilesCount = await dbClient.db().collection('tracks.files').countDocuments({ metadata: { title: trackBaseData.title } });
+        assert.strictEqual(trackFilesCount, 0);
       } finally {
         await dbClient.close();
       }
-    }).timeout(testConfig.testRunTimeout);
+    }).timeout(testConfig.uploadFlacFileTestTimeout);
   });
 
   describe('POST /validate', () => {
@@ -322,14 +313,13 @@ describe('TrackController', () => {
 
 function createApp (dbClient, trackBaseData) {
   const app = express();
-  const uploader = new TrackUploader(dbClient, new Logger());
-  const streamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
-  const updater = new AritstHierarchyUpdater(dbClient, new Logger());
-  const parser = trackBaseData ? new TrackParserTest(trackBaseData) : new TrackParser(new Logger());
-  const validator = new TrackPresenceValidator(dbClient, new Logger());
-  const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(parser, validator, new Logger());
-  const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(parser, updater, uploader, new Logger());
-  const controller = new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, streamer, new Logger());
+  const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
+  const trackParser = trackBaseData ? new TrackParserTest(trackBaseData) : new TrackParser(new Logger());
+  const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
+  const fileLifetimeActionsFactory = new FileLifetimeActionsFactory(dbClient);
+  const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
+  const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, fileLifetimeActionsFactory, new Logger());
+  const controller = new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, trackStreamer, new Logger());
   app.use('/', controller.route());
 
   const logger = new Logger();
