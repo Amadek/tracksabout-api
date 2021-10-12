@@ -4,8 +4,8 @@ const { Conflict } = require('http-errors');
 
 module.exports = class BusboyStreamReaderToValidateTrack extends BusboyStreamReader {
   /**
-   * @param {import('../ITrackParser')} trackParser
-   * @param {import('../TrackPresenceValidator')} trackPresenceValidator
+   * @param {import('../FileActions/ITrackParser')} trackParser
+   * @param {import('../FileActions/TrackPresenceValidator')} trackPresenceValidator
    */
   constructor (trackParser, trackPresenceValidator, logger) {
     super(logger);

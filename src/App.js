@@ -1,20 +1,16 @@
 const DbConnector = require('./DbConnector');
 const express = require('express');
 const TrackController = require('./Controllers/TrackController');
-const TrackParser = require('./TrackParser');
-const TrackPresenceValidator = require('./TrackPresenceValidator');
 const { NotFound } = require('http-errors');
 const Logger = require('./Controllers/Logger');
 const Config = require('./Config');
-const BusboyStreamReaderToValidateTrack = require('./Controllers/BusboyStreamReaderToValidateTrack');
-const BusboyStreamReaderToUploadTrack = require('./Controllers/BusboyStreamReaderToUploadTrack');
-const Searcher = require('./Searcher/Searcher');
+const Searcher = require('./SearchActions/Searcher');
 const SearchController = require('./Controllers/SearchController');
 const https = require('https');
 const fs = require('fs/promises');
 const assert = require('assert');
-const TrackStreamer = require('./TrackStreamer');
-const FileLifetimeActionsFactory = require('./FileLifetimeActions/FileLifetimeActionsFactory');
+const { TrackParser, TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory } = require('./FileActions');
+const { BusboyActionsFactory } = require('./RequestActions');
 
 class App {
   constructor (dbConnector, config, logger) {
@@ -61,11 +57,10 @@ class App {
     const trackParser = new TrackParser(new Logger());
     const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
     const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
-    const fileLifetimeActionsFactory = new FileLifetimeActionsFactory(dbClient);
-    const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
-    const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, fileLifetimeActionsFactory, new Logger());
+    const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
+    const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackPresenceValidator, reversibleActionsFactory);
 
-    return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, trackStreamer, new Logger());
+    return new TrackController(busboyActionsFactory, trackStreamer, new Logger());
   }
 
   _createSearchController (dbClient) {

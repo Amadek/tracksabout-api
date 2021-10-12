@@ -7,16 +7,12 @@ const DbConnector = require('../src/DbConnector.js');
 const TrackController = require('../src/Controllers/TrackController');
 const Logger = require('../src/Controllers/Logger');
 const Config = require('../src/Config');
-const TrackPresenceValidator = require('../src/TrackPresenceValidator.js');
-const BusboyStreamReaderToValidateTrack = require('../src/Controllers/BusboyStreamReaderToValidateTrack.js');
-const BusboyStreamReaderToUploadTrack = require('../src/Controllers/BusboyStreamReaderToUploadTrack.js');
 const TrackParserTest = require('./TrackParserTest');
-const TrackParser = require('../src/TrackParser');
-const TrackStreamer = require('../src/TrackStreamer.js');
-const Searcher = require('../src/Searcher/Searcher.js');
+const Searcher = require('../src/SearchActions/Searcher');
 const TestConfig = require('./TestConfig');
 const fsPromises = require('fs/promises');
-const FileLifetimeActionsFactory = require('../src/FileLifetimeActions/FileLifetimeActionsFactory.js');
+const { TrackPresenceValidator, TrackParser, TrackStreamer, ReversibleActionsFactory } = require('../src/FileActions');
+const { BusboyActionsFactory } = require('../src/RequestActions');
 
 const testConfig = new TestConfig();
 
@@ -316,10 +312,9 @@ function createApp (dbClient, trackBaseData) {
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const trackParser = trackBaseData ? new TrackParserTest(trackBaseData) : new TrackParser(new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
-  const fileLifetimeActionsFactory = new FileLifetimeActionsFactory(dbClient);
-  const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
-  const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, fileLifetimeActionsFactory, new Logger());
-  const controller = new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, trackStreamer, new Logger());
+  const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
+  const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackPresenceValidator, reversibleActionsFactory);
+  const controller = new TrackController(busboyActionsFactory, trackStreamer, new Logger());
   app.use('/', controller.route());
 
   const logger = new Logger();

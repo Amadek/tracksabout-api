@@ -3,20 +3,17 @@ const express = require('express');
 const request = require('supertest');
 const assert = require('assert');
 const SearchController = require('../src/Controllers/SearchController');
-const Searcher = require('../src/Searcher/Searcher');
+const Searcher = require('../src/SearchActions/Searcher');
 const Logger = require('../src/Controllers/Logger');
 const DbConnector = require('../src/DbConnector');
 const Config = require('../src/Config');
-const TrackPresenceValidator = require('../src/TrackPresenceValidator');
-const BusboyStreamReaderToValidateTrack = require('../src/Controllers/BusboyStreamReaderToValidateTrack');
-const BusboyStreamReaderToUploadTrack = require('../src/Controllers/BusboyStreamReaderToUploadTrack');
 const TrackController = require('../src/Controllers/TrackController');
 const TrackParserTest = require('./TrackParserTest');
 const { ObjectId } = require('mongodb');
-const SearchResultType = require('../src/Searcher/SearchResultType');
-const TrackStreamer = require('../src/TrackStreamer');
+const SearchResultType = require('../src/SearchActions/SearchResultType');
 const TestConfig = require('./TestConfig');
-const FileLifetimeActionsFactory = require('../src/FileLifetimeActions/FileLifetimeActionsFactory');
+const { TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory } = require('../src/FileActions');
+const { BusboyActionsFactory } = require('../src/RequestActions');
 
 const testConfig = new TestConfig();
 
@@ -386,9 +383,8 @@ function createTrackController (dbClient, trackBaseData) {
   const trackParser = new TrackParserTest(trackBaseData);
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
-  const fileLifetimeActionsFactory = new FileLifetimeActionsFactory(dbClient);
-  const busboyStreamReaderToValidateTrack = new BusboyStreamReaderToValidateTrack(trackParser, trackPresenceValidator, new Logger());
-  const busboyStreamReaderToUploadTrack = new BusboyStreamReaderToUploadTrack(trackParser, fileLifetimeActionsFactory, new Logger());
+  const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
+  const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackPresenceValidator, reversibleActionsFactory);
 
-  return new TrackController(busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, trackStreamer, new Logger());
+  return new TrackController(busboyActionsFactory, trackStreamer, new Logger());
 }

@@ -1,6 +1,6 @@
 /* global describe it  */
-const TrackPresenceValidator = require('../src/TrackPresenceValidator');
-const { ObjectID } = require('mongodb');
+const { TrackPresenceValidator } = require('../src/FileActions');
+const { ObjectId } = require('mongodb');
 const Logger = require('../src/Controllers/Logger');
 const assert = require('assert');
 
@@ -9,9 +9,9 @@ describe(TrackPresenceValidator.name, () => {
     it('should return False when track has not artist yet in database', async () => {
       // ARRANGE
       const parsedTrack = {
-        artistName: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        title: new ObjectID().toHexString()
+        artistName: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        title: new ObjectId().toHexString()
       };
       const dbClient = {
         db: () => ({
@@ -32,13 +32,13 @@ describe(TrackPresenceValidator.name, () => {
     it('should return False when track has artist but not album yet in database', async () => {
       // ARRANGE
       const parsedTrack = {
-        artistName: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        title: new ObjectID().toHexString()
+        artistName: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        title: new ObjectId().toHexString()
       };
       const existingArtist = {
         name: parsedTrack.artistName,
-        albums: [{ name: new ObjectID().toHexString(), tracks: [] }]
+        albums: [{ name: new ObjectId().toHexString(), tracks: [] }]
       };
       const dbClient = {
         db: () => ({
@@ -59,9 +59,9 @@ describe(TrackPresenceValidator.name, () => {
     it('should return False when track has artist with album but not with specific track yet in database', async () => {
       // ARRANGE
       const parsedTrack = {
-        artistName: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        title: new ObjectID().toHexString()
+        artistName: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        title: new ObjectId().toHexString()
       };
       const existingArtist = {
         name: parsedTrack.artistName,
@@ -86,9 +86,9 @@ describe(TrackPresenceValidator.name, () => {
     it('should return True when track has artist with album and with specific track already in database', async () => {
       // ARRANGE
       const parsedTrack = {
-        artistName: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        title: new ObjectID().toHexString()
+        artistName: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        title: new ObjectId().toHexString()
       };
       const existingArtist = {
         name: parsedTrack.artistName,

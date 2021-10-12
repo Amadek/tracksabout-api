@@ -5,7 +5,7 @@ const { ObjectID } = require('mongodb');
 
 module.exports = class SearchController {
   /**
-   * @param {import('../Searcher/Searcher')} searcher
+   * @param {import('../SearchActions/Searcher')} searcher
    */
   constructor (searcher) {
     assert.ok(searcher); this._searcher = searcher;

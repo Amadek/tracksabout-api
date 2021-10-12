@@ -4,7 +4,7 @@ const ITrackParser = require('./ITrackParser');
 
 module.exports = class TrackParser extends ITrackParser {
   /**
-   * @param {import('./Controllers/Logger')} logger
+   * @param {import('../Controllers/Logger')} logger
    */
   constructor (logger) {
     super();

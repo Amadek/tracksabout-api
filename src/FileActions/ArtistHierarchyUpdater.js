@@ -1,11 +1,11 @@
 const assert = require('assert');
 const { ObjectId } = require('mongodb');
-const UndoRedo = require('./UndoRedo');
+const IReversibleAction = require('./IReversibleAction');
 
-module.exports = class AritstHierarchyUpdater extends UndoRedo {
+module.exports = class ArtistHierarchyUpdater extends IReversibleAction {
   /**
-   * @param {import('mongodb').MongoClient} dbClient
-   * @param {import('./Controllers/Logger')} logger
+   * @param {*} dbClient
+   * @param {import('../Controllers/Logger')} logger
    */
   constructor (dbClient, logger) {
     super();

@@ -3,7 +3,7 @@ const assert = require('assert');
 module.exports = class TrackPresenceValidator {
   /**
    * @param {any} dbClient
-   * @param {import('./Controllers/Logger')} logger
+   * @param {import('../Controllers/Logger')} logger
    */
   constructor (dbClient, logger) {
     assert.ok(dbClient); this._dbClient = dbClient;

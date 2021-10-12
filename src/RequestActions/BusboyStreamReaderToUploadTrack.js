@@ -5,14 +5,14 @@ const { PassThrough } = require('stream');
 
 module.exports = class BusboyStreamReaderToUploadTrack extends BusboyStreamReader {
   /**
-   * @param {import('../ITrackParser')} trackParser
-   * @param {import('../FileLifetimeActions/FileLifetimeActionsFactory')} fileLifetimeActionsFactory
-   * @param {import('./Logger')} logger
+   * @param {import('../FileActions/ITrackParser')} trackParser
+   * @param {import('../FileActions/ReversibleActionsFactory')} reversibleActionsFactory
+   * @param {import('../Controllers/Logger')} logger
    */
-  constructor (trackParser, fileLifetimeActionsFactory, logger) {
+  constructor (trackParser, reversibleActionsFactory, logger) {
     super(logger);
     assert.ok(trackParser); this._trackParser = trackParser;
-    assert.ok(fileLifetimeActionsFactory); this._fileLifetimeActionsFactory = fileLifetimeActionsFactory;
+    assert.ok(reversibleActionsFactory); this._reversibleActionsFactory = reversibleActionsFactory;
 
     this._updateArtistQueue = Promise.resolve({ updated: false, message: null, updatedArtist: null });
   }
@@ -44,8 +44,8 @@ module.exports = class BusboyStreamReaderToUploadTrack extends BusboyStreamReade
     } catch (error) {
       throw new BadRequest(error.message);
     }
-    const artistHierarchyUpdater = this._fileLifetimeActionsFactory.createArtistHierarchyUpdater();
-    const trackUploader = this._fileLifetimeActionsFactory.createTrackUploader();
+    const artistHierarchyUpdater = this._reversibleActionsFactory.createArtistHierarchyUpdater();
+    const trackUploader = this._reversibleActionsFactory.createTrackUploader();
 
     this._updateArtistQueue = this._updateArtistQueue.then(() => artistHierarchyUpdater.update(parsedTrack));
     const updateArtistResult = await this._updateArtistQueue;

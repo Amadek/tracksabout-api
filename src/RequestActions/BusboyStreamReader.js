@@ -6,7 +6,7 @@ const assert = require('assert');
  */
 module.exports = class BusboyStreamReader {
   /**
-   * @param {import('./Logger')} logger
+   * @param {import('../Controllers/Logger')} logger
    */
   constructor (logger) {
     assert.ok(logger); this._logger = logger;
@@ -70,9 +70,9 @@ module.exports = class BusboyStreamReader {
 
   /**
    * @protected
-   * @param {import('../UndoRedo')} action
+   * @param {import('../FileActions/IReversibleAction')} reversibleAction
    */
-  addActionToUndo (action) {
-    this._actionsToUndo.push(action);
+  addActionToUndo (reversibleAction) {
+    this._actionsToUndo.push(reversibleAction);
   }
 };

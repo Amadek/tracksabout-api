@@ -1,11 +1,11 @@
 const assert = require('assert');
 const { GridFSBucket, ObjectId } = require('mongodb');
-const UndoRedo = require('./UndoRedo');
+const IReversibleAction = require('./IReversibleAction');
 
-module.exports = class TrackUploader extends UndoRedo {
+module.exports = class TrackUploader extends IReversibleAction {
   /**
    * @param {import('mongodb').MongoClient} dbClient
-   * @param {import('./Controllers/Logger')} logger
+   * @param {import('../Controllers/Logger')} logger
    */
   constructor (dbClient, logger) {
     super();
@@ -97,8 +97,8 @@ module.exports = class TrackUploader extends UndoRedo {
           resolve(trackFileId);
         })
         .on('error', err => {
-          this._logger.log(this, 'ERROR IN GRIDFS ERROR HANDLER, AP NEED TO FIX THAT (występuje wtedy kiedy jest anulowany strumien uploadu, nie wiadomo jeszcze dlaczego, pozostawia śmieci w bazie): ' + err.message);
-          resolve(trackFileId);
+          this._logger.log(this, 'Error in GridFS error handler: ' + err.message);
+          reject(trackFileId);
         });
 
       trackStream.pipe(uploadTrackStream);

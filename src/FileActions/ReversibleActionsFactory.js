@@ -1,9 +1,9 @@
-const TrackUploader = require('../TrackUploader');
+const TrackUploader = require('./TrackUploader');
 const assert = require('assert');
 const Logger = require('../Controllers/Logger');
-const AritstHierarchyUpdater = require('../ArtistHierarchyUpdater');
+const AritstHierarchyUpdater = require('./ArtistHierarchyUpdater');
 
-module.exports = class FileLifetimeActionsFactory {
+module.exports = class ReversibleActionsFactory {
   constructor (dbClient) {
     assert.ok(dbClient); this._dbClient = dbClient;
   }

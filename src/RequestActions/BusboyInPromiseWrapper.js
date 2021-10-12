@@ -39,7 +39,7 @@ module.exports = class BusboyInPromiseWrapper {
             // 2. When error is catched here, we need to return it to notify Promise.all to undo all performed actions.
             //    We can't simply throw beacuse we have to wait for all actions.
             .catch(async err => {
-              this._logger.log(this, 'Error in file hander:\n' + err.message);
+              this._logger.log(this, 'Error in file hander: ' + err.message);
               // When in at least one stream handling error occur, we cancell and undo all actions -> all or none method.
               await busboyStreamReader.cancellAllHandlingStreams();
               return err;
