@@ -6,7 +6,7 @@ module.exports = class TrackStreamer {
   /**
    * @param {import('../SearchActions/Searcher')} searcher
    * @param {import('mongodb').MongoClient} dbClient
-   * @param {import('../Controllers/Logger')} logger
+   * @param {import('../Logging/Logger')} logger
    */
   constructor (searcher, dbClient, logger) {
     assert.ok(searcher); this._searcher = searcher;

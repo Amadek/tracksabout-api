@@ -2,7 +2,7 @@
 const { ArtistHierarchyUpdater } = require('../src/FileActions');
 const assert = require('assert');
 const { ObjectId } = require('mongodb');
-const Logger = require('../src/Controllers/Logger');
+const Logger = require('../src/Logging/Logger');
 
 describe('ArtistHierarchyUpdater', () => {
   describe('update()', () => {

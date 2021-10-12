@@ -1,6 +1,6 @@
 const TrackUploader = require('./TrackUploader');
 const assert = require('assert');
-const Logger = require('../Controllers/Logger');
+const Logger = require('../Logging/Logger');
 const AritstHierarchyUpdater = require('./ArtistHierarchyUpdater');
 
 module.exports = class ReversibleActionsFactory {

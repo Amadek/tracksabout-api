@@ -5,7 +5,7 @@ const IReversibleAction = require('./IReversibleAction');
 module.exports = class ArtistHierarchyUpdater extends IReversibleAction {
   /**
    * @param {*} dbClient
-   * @param {import('../Controllers/Logger')} logger
+   * @param {import('../Logging/Logger')} logger
    */
   constructor (dbClient, logger) {
     super();

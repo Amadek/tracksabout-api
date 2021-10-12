@@ -3,13 +3,13 @@ const { Router } = require('express');
 const { BadRequest } = require('http-errors');
 const Busboy = require('busboy');
 const { BusboyInPromiseWrapper } = require('../RequestActions');
-const Logger = require('./Logger');
+const Logger = require('../Logging/Logger');
 
 module.exports = class TrackController {
   /**
    * @param {import('../RequestActions/BusboyActionsFactory')} busboyActionsFactory
    * @param {import('../FileActions/TrackStreamer')} trackStreamer
-   * @param {import('../Controllers/Logger')} logger
+   * @param {import('../Logging/Logger')} logger
    */
   constructor (busboyActionsFactory, trackStreamer, logger) {
     assert.ok(busboyActionsFactory); this._busboyActionsFactory = busboyActionsFactory;

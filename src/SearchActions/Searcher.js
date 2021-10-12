@@ -4,7 +4,7 @@ const SearchResultType = require('./SearchResultType');
 module.exports = class Searcher {
   /**
    * @param {import('mongodb').MongoClient} dbClient
-   * @param {import('../Controllers/Logger')} logger
+   * @param {import('../Logging/Logger')} logger
    */
   constructor (dbClient, logger) {
     assert.ok(dbClient); this._dbClient = dbClient;

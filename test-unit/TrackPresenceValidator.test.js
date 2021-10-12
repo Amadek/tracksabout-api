@@ -1,7 +1,7 @@
 /* global describe it  */
 const { TrackPresenceValidator } = require('../src/FileActions');
 const { ObjectId } = require('mongodb');
-const Logger = require('../src/Controllers/Logger');
+const Logger = require('../src/Logging/Logger');
 const assert = require('assert');
 
 describe(TrackPresenceValidator.name, () => {

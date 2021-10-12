@@ -1,5 +1,5 @@
 const assert = require('assert');
-const Logger = require('../Controllers/Logger');
+const Logger = require('../Logging/Logger');
 const BusboyStreamReaderToUploadTrack = require('./BusboyStreamReaderToUploadTrack');
 const BusboyStreamReaderToValidateTrack = require('./BusboyStreamReaderToValidateTrack');
 

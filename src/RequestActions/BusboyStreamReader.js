@@ -6,7 +6,7 @@ const assert = require('assert');
  */
 module.exports = class BusboyStreamReader {
   /**
-   * @param {import('../Controllers/Logger')} logger
+   * @param {import('../Logging/Logger')} logger
    */
   constructor (logger) {
     assert.ok(logger); this._logger = logger;

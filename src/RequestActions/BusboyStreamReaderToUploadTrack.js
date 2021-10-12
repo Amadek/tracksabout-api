@@ -7,7 +7,7 @@ module.exports = class BusboyStreamReaderToUploadTrack extends BusboyStreamReade
   /**
    * @param {import('../FileActions/ITrackParser')} trackParser
    * @param {import('../FileActions/ReversibleActionsFactory')} reversibleActionsFactory
-   * @param {import('../Controllers/Logger')} logger
+   * @param {import('../Logging/Logger')} logger
    */
   constructor (trackParser, reversibleActionsFactory, logger) {
     super(logger);
