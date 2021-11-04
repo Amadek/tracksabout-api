@@ -62,6 +62,22 @@ module.exports = class TrackStreamer {
     });
   }
 
+  async getStream (trackId) {
+    assert.ok(trackId);
+    this._logger.log(this, `Get track stream for track id: ${trackId}`);
+    const track = await this._searcher.searchById(trackId);
+    if (!track) return null;
+
+    const { length: trackFileSizeFromDb } = await this._dbClient.db()
+      .collection('tracks.files')
+      .findOne({ _id: track.fileId }, { projection: { length: 1 } });
+
+    const chunkSizeBytes = 256;
+    const bucket = new GridFSBucket(this._dbClient.db(), { chunkSizeBytes, bucketName: 'tracks' });
+    const downloadTrackStream = bucket.openDownloadStream(track.fileId, { start: 0, end: trackFileSizeFromDb });
+    return { stream: downloadTrackStream, mimetype: track.mimetype };
+  }
+
   _parseFileRange (httpRequest, fileLength) {
     const range = httpRequest.headers.range.split(/bytes=([0-9]*)-([0-9]*)/);
     const fileStart = parseInt(range[1]);

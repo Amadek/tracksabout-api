@@ -19,8 +19,6 @@ module.exports = class TrackParser extends ITrackParser {
     return Promise.resolve()
       .then(() => mm.parseStream(fileStream, { mimeType: mimetype }))
       .then(metadata => {
-        this._logger.log(this, 'Parsing information from track.');
-
         const parsedTrack = {
           number: metadata.common.track.no,
           title: metadata.common.title,
@@ -34,5 +32,24 @@ module.exports = class TrackParser extends ITrackParser {
         this._logger.log(this, 'Parsing ends, parsed track: \n' + JSON.stringify(parsedTrack, null, 2));
         return parsedTrack;
       });
+  }
+
+  async getCover (fileStream, mimetype) {
+    assert.ok(fileStream);
+    assert.ok(mimetype);
+
+    this._logger.log(this, `Parsing begins for getting track cover, mimeType = ${mimetype}`);
+    const metadata = await mm.parseStream(fileStream, { mimeType: mimetype });
+
+    if (!metadata.common.picture[0]) return null;
+
+    assert.ok(metadata.common.picture[0].format);
+    assert.ok(metadata.common.picture[0].data);
+
+    const cover = metadata.common.picture[0];
+    return {
+      format: cover.format,
+      data: cover.data.toString('base64')
+    };
   }
 };

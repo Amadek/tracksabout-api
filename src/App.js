@@ -60,7 +60,7 @@ class App {
     const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
     const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackPresenceValidator, reversibleActionsFactory);
 
-    return new TrackController(busboyActionsFactory, trackStreamer, new Logger());
+    return new TrackController(busboyActionsFactory, trackStreamer, trackParser, new Logger());
   }
 
   _createSearchController (dbClient) {
