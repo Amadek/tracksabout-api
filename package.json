@@ -2,9 +2,9 @@
   "name": "tracksabout-api",
   "version": "1.0.0",
   "description": "",
-  "main": "src/index.js",
+  "main": "src/App.js",
   "scripts": {
-    "start": "DEBUG=tracksabout-api:*,express:router node src/index.js",
+    "start": "DEBUG=tracksabout-api:*,express:router node src/App.js",
     "test": "mocha test-*/*.test.js",
     "debug": "DEBUG=tracksabout-api:* mocha test-*/*.test.js"
   },
@@ -24,7 +24,7 @@
     "express": "^4.17.1",
     "express-fileupload": "^1.2.0",
     "http-errors": "^1.7.2",
-    "mongodb": "^3.6.5",
+    "mongodb": "^4.1.2",
     "music-metadata": "^7.5.0"
   },
   "devDependencies": {

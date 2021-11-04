@@ -4,7 +4,7 @@ const SearchResultType = require('./SearchResultType');
 module.exports = class Searcher {
   /**
    * @param {import('mongodb').MongoClient} dbClient
-   * @param {import('../Controllers/Logger')} logger
+   * @param {import('../Logging/Logger')} logger
    */
   constructor (dbClient, logger) {
     assert.ok(dbClient); this._dbClient = dbClient;
@@ -19,13 +19,11 @@ module.exports = class Searcher {
 
     this._logger.log(this, 'Search started.');
 
-    let searchResults = [
+    const searchResults = [
       await this._searchTracks(trackTitleRegexp),
       await this._searchAlbums(trackTitleRegexp),
       await this._searchArtists(trackTitleRegexp)
-    ];
-
-    searchResults = searchResults.flat();
+    ].flat();
 
     this._logger.log(this, `Search completed. Found ${searchResults.length} elements.`);
 
@@ -131,6 +129,7 @@ module.exports = class Searcher {
           fileId: '$albums.tracks.fileId',
           albumId: '$albums._id',
           title: '$albums.tracks.title',
+          duration: '$albums.tracks.duration',
           albumName: '$albums.tracks.albumName',
           artistName: '$albums.tracks.artistName',
           year: '$albums.tracks.year',

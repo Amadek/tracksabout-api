@@ -7,7 +7,7 @@ module.exports = class DbConnector {
    */
   constructor (config) {
     assert.ok(config);
-    this._mongoClient = new MongoClient(config.dbConnectionString, { useNewUrlParser: true, useUnifiedTopology: true });
+    this._mongoClient = new MongoClient(config.dbConnectionString);
   }
 
   async connect () {

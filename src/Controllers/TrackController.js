@@ -2,18 +2,18 @@ const assert = require('assert');
 const { Router } = require('express');
 const { BadRequest } = require('http-errors');
 const Busboy = require('busboy');
-const BusboyInPromiseWrapper = require('./BusboyInPromiseWrapper');
-const Logger = require('./Logger');
+const { BusboyInPromiseWrapper } = require('../RequestActions');
+const Logger = require('../Logging/Logger');
 
 module.exports = class TrackController {
   /**
-   * @param {import('./BusboyStreamReaderToUploadTrack')} busboyStreamReaderToUploadTrack
-   * @param {import('./BusboyStreamReaderToValidateTrack')} busboyStreamReaderToValidateTrack
-   * @param {import('../Controllers/Logger')} logger
+   * @param {import('../RequestActions/BusboyActionsFactory')} busboyActionsFactory
+   * @param {import('../FileActions/TrackStreamer')} trackStreamer
+   * @param {import('../Logging/Logger')} logger
    */
-  constructor (busboyStreamReaderToUploadTrack, busboyStreamReaderToValidateTrack, logger) {
-    assert.ok(busboyStreamReaderToUploadTrack); this._busboyStreamReaderToUploadTrack = busboyStreamReaderToUploadTrack;
-    assert.ok(busboyStreamReaderToValidateTrack); this._busboyStreamReaderToValidateTrack = busboyStreamReaderToValidateTrack;
+  constructor (busboyActionsFactory, trackStreamer, logger) {
+    assert.ok(busboyActionsFactory); this._busboyActionsFactory = busboyActionsFactory;
+    assert.ok(trackStreamer); this._trackStreamer = trackStreamer;
     assert.ok(logger); this._logger = logger;
     this._busboyWrapper = new BusboyInPromiseWrapper(new Logger());
   }
@@ -22,6 +22,7 @@ module.exports = class TrackController {
     const router = Router();
     router.post('/', this._postTrack.bind(this));
     router.post('/validate', this._postValidateTrack.bind(this));
+    router.get('/stream/:id', this._getStreamTrack.bind(this));
     return router;
   }
 
@@ -37,7 +38,8 @@ module.exports = class TrackController {
     assert.ok(next);
 
     try {
-      const uploadedTrackIds = await this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._busboyStreamReaderToUploadTrack);
+      const streamReaderToUploadTrack = this._busboyActionsFactory.createStreamReaderToUploadTrack();
+      const uploadedTrackIds = await this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), streamReaderToUploadTrack);
       this._logger.log(this, `Returned fileIds = ${JSON.stringify(uploadedTrackIds)} of uploaded tracks.`);
 
       return res.json(uploadedTrackIds);
@@ -66,9 +68,22 @@ module.exports = class TrackController {
     assert.ok(next);
 
     try {
-      const [parsedTrack] = await this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), this._busboyStreamReaderToValidateTrack);
+      const streamReaderToValidateTrack = this._busboyActionsFactory.createStreamReaderToValidateTrack();
+      const [parsedTrack] = await this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), streamReaderToValidateTrack);
 
       return res.json(parsedTrack);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async _getStreamTrack (req, res, next) {
+    assert.ok(req);
+    assert.ok(res);
+    assert.ok(next);
+
+    try {
+      await this._trackStreamer.stream(req, res);
     } catch (error) {
       next(error);
     }

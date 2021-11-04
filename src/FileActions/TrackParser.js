@@ -4,7 +4,7 @@ const ITrackParser = require('./ITrackParser');
 
 module.exports = class TrackParser extends ITrackParser {
   /**
-   * @param {import('./Controllers/Logger')} logger
+   * @param {import('../Logging/Logger')} logger
    */
   constructor (logger) {
     super();
@@ -24,6 +24,7 @@ module.exports = class TrackParser extends ITrackParser {
         const parsedTrack = {
           number: metadata.common.track.no,
           title: metadata.common.title,
+          duration: metadata.format.duration,
           albumName: metadata.common.album,
           artistName: metadata.common.artist,
           year: metadata.common.year,

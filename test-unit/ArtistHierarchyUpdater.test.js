@@ -1,29 +1,36 @@
 /* global describe it */
-const AritstHierarchyUpdater = require('../src/ArtistHierarchyUpdater');
+const { ArtistHierarchyUpdater } = require('../src/FileActions');
 const assert = require('assert');
-const { ObjectID } = require('mongodb');
-const Logger = require('../src/Controllers/Logger');
+const { ObjectId } = require('mongodb');
+const Logger = require('../src/Logging/Logger');
 
 describe('ArtistHierarchyUpdater', () => {
   describe('update()', () => {
     it('should create artist when artist from track does not exist', async () => {
       // ARRANGE
       const uploadedTrack = {
-        title: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        artistName: new ObjectID().toHexString()
+        title: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        artistName: new ObjectId().toHexString()
       };
-      const dbClient = {
-        db: () => ({
-          collection: () => ({
-            countDocuments: () => Promise.resolve(0),
-            insertOne: obj => Promise.resolve({ ops: [obj] }),
-            findOne: () => Promise.resolve(),
-            updateOne: (_filter, { $set }) => Promise.resolve($set)
+      const dbClient = (() => {
+        let insertedObj = null;
+        return {
+          db: () => ({
+            collection: () => ({
+              countDocuments: () => Promise.resolve(0),
+              insertOne: obj => {
+                insertedObj = obj;
+                insertedObj._id = new ObjectId();
+                return Promise.resolve({ insertedId: insertedObj._id });
+              },
+              findOne: ({ _id }) => _id === insertedObj._id ? Promise.resolve(insertedObj) : null,
+              updateOne: (_filter, { $set }) => Promise.resolve($set)
+            })
           })
-        })
-      };
-      const updater = new AritstHierarchyUpdater(dbClient, new Logger());
+        };
+      })();
+      const updater = new ArtistHierarchyUpdater(dbClient, new Logger());
       // ACT
       const result = await updater.update(uploadedTrack);
 
@@ -39,9 +46,9 @@ describe('ArtistHierarchyUpdater', () => {
     it('should create album when artist from track does not have specific album', done => {
       // ARRANGE
       const uploadedTrack = {
-        title: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        artistName: new ObjectID().toHexString()
+        title: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        artistName: new ObjectId().toHexString()
       };
       const dbClient = {
         db: () => ({
@@ -50,13 +57,13 @@ describe('ArtistHierarchyUpdater', () => {
             insertOne: () => Promise.resolve(),
             findOne: () => Promise.resolve({
               name: uploadedTrack.artistName,
-              albums: [{ name: new ObjectID().toHexString(), tracks: [{ title: new ObjectID().toHexString() }] }]
+              albums: [{ name: new ObjectId().toHexString(), tracks: [{ title: new ObjectId().toHexString() }] }]
             }),
             updateOne: (_filter, { $set }) => Promise.resolve($set)
           })
         })
       };
-      const updater = new AritstHierarchyUpdater(dbClient, new Logger());
+      const updater = new ArtistHierarchyUpdater(dbClient, new Logger());
       // ACT
       updater.update(uploadedTrack)
         .then(result => {
@@ -75,9 +82,9 @@ describe('ArtistHierarchyUpdater', () => {
     it('should create track when album from track does not have specific track', done => {
       // ARRANGE
       const uploadedTrack = {
-        title: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        artistName: new ObjectID().toHexString()
+        title: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        artistName: new ObjectId().toHexString()
       };
       const dbClient = {
         db: () => ({
@@ -86,13 +93,13 @@ describe('ArtistHierarchyUpdater', () => {
             insertOne: () => Promise.resolve(),
             findOne: () => Promise.resolve({
               name: uploadedTrack.artistName,
-              albums: [{ name: uploadedTrack.albumName, tracks: [{ title: new ObjectID().toHexString() }] }]
+              albums: [{ name: uploadedTrack.albumName, tracks: [{ title: new ObjectId().toHexString() }] }]
             }),
             updateOne: (_filter, { $set }) => Promise.resolve($set)
           })
         })
       };
-      const updater = new AritstHierarchyUpdater(dbClient, new Logger());
+      const updater = new ArtistHierarchyUpdater(dbClient, new Logger());
       // ACT
       updater.update(uploadedTrack)
         .then(result => {
@@ -111,9 +118,9 @@ describe('ArtistHierarchyUpdater', () => {
     it('should not create track when album from track has specific track', done => {
       // ARRANGE
       const uploadedTrack = {
-        title: new ObjectID().toHexString(),
-        albumName: new ObjectID().toHexString(),
-        artistName: new ObjectID().toHexString()
+        title: new ObjectId().toHexString(),
+        albumName: new ObjectId().toHexString(),
+        artistName: new ObjectId().toHexString()
       };
       const dbClient = {
         db: () => ({
@@ -128,7 +135,7 @@ describe('ArtistHierarchyUpdater', () => {
           })
         })
       };
-      const updater = new AritstHierarchyUpdater(dbClient, new Logger());
+      const updater = new ArtistHierarchyUpdater(dbClient, new Logger());
       // ACT
       updater.update(uploadedTrack)
         .then(result => {
