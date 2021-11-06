@@ -314,7 +314,8 @@ function createApp (dbClient, trackBaseData) {
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
   const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
   const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackPresenceValidator, reversibleActionsFactory);
-  const controller = new TrackController(busboyActionsFactory, trackStreamer, trackParser, new Logger());
+  const searcher = new Searcher(dbClient, new Logger());
+  const controller = new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());
   app.use('/', controller.route());
 
   const logger = new Logger();

@@ -256,6 +256,7 @@ describe(SearchController.name, () => {
         assert.strictEqual(searchByIdResult.artistName, trackBaseData.artistName);
         assert.ok(searchByIdResult.fileId);
         assert.ok(searchByIdResult.year);
+        assert.ok(Number.isInteger(searchByIdResult.number));
         assert.ok(searchByIdResult.mimetype);
       } finally {
         await dbClient.close();
@@ -304,9 +305,10 @@ describe(SearchController.name, () => {
 
         assert.ok(searchByIdResult.tracks[0]);
         assert.strictEqual(searchByIdResult.tracks[0].title, trackBaseData.title);
+        assert.strictEqual(searchByIdResult.tracks[0].albumId, searchByIdResult._id);
         assert.ok(searchByIdResult.tracks[0].fileId);
         assert.ok(searchByIdResult.tracks[0].mimetype);
-        assert.ok(searchByIdResult.tracks[0].number);
+        assert.ok(Number.isInteger(searchByIdResult.tracks[0].number));
         assert.ok(searchByIdResult.artistId);
       } finally {
         await dbClient.close();
@@ -385,6 +387,7 @@ function createTrackController (dbClient, trackBaseData) {
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
   const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
   const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackPresenceValidator, reversibleActionsFactory);
+  const searcher = new Searcher(dbClient, new Logger());
 
-  return new TrackController(busboyActionsFactory, trackStreamer, trackParser, new Logger());
+  return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());
 }

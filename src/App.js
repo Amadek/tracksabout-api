@@ -59,8 +59,9 @@ class App {
     const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
     const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
     const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackPresenceValidator, reversibleActionsFactory);
+    const searcher = new Searcher(dbClient, new Logger());
 
-    return new TrackController(busboyActionsFactory, trackStreamer, trackParser, new Logger());
+    return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());
   }
 
   _createSearchController (dbClient) {
