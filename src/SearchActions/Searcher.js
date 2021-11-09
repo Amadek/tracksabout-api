@@ -175,6 +175,7 @@ module.exports = class Searcher {
       {
         $project: {
           _id: '$albums.tracks._id',
+          albumId: '$albums._id',
           type: SearchResultType.track,
           title: '$albums.tracks.title',
           albumName: '$albums.name',

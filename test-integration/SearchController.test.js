@@ -14,6 +14,7 @@ const SearchResultType = require('../src/SearchActions/SearchResultType');
 const TestConfig = require('./TestConfig');
 const { TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory } = require('../src/FileActions');
 const { BusboyActionsFactory } = require('../src/RequestActions');
+const { ObjectID } = require('mongodb');
 
 const testConfig = new TestConfig();
 
@@ -84,6 +85,7 @@ describe(SearchController.name, () => {
         assert.ok(searchResults.every(t => t.type === SearchResultType.track));
         assert.ok(searchResults.find(t => t.title === searchTrackPhrase));
         assert.ok(searchResults.find(t => t.title === trackBaseData.title));
+        assert.ok(searchResults.every(t => ObjectID.isValid(t.albumId)));
       } finally {
         await dbClient.close();
       }
