@@ -12,6 +12,7 @@ const assert = require('assert');
 const { TrackParser, TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory } = require('./FileActions');
 const { BusboyActionsFactory } = require('./RequestActions');
 const TrackFieldsValidator = require('./FileActions/TrackFieldsValidator');
+const AuthController = require('./Controllers/AuthController');
 
 class App {
   constructor (dbConnector, config, logger) {
@@ -40,6 +41,7 @@ class App {
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
       next();
     });
+    app.use('/auth', this._createAuthController(config).route());
     app.use('/track', this._createTrackController(dbClient).route());
     app.use('/search', this._createSearchController(dbClient).route());
     // Any other route should throw Not Found.
@@ -52,6 +54,10 @@ class App {
     });
 
     return app;
+  }
+
+  _createAuthController (config) {
+    return new AuthController(config);
   }
 
   _createTrackController (dbClient) {

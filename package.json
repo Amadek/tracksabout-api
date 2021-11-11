@@ -25,7 +25,8 @@
     "express-fileupload": "^1.2.0",
     "http-errors": "^1.7.2",
     "mongodb": "^4.1.2",
-    "music-metadata": "^7.5.0"
+    "music-metadata": "^7.5.0",
+    "node-fetch": "^2.6.6"
   },
   "devDependencies": {
     "dotenv": "^8.2.0",
