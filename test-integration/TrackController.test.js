@@ -13,6 +13,8 @@ const TestConfig = require('./TestConfig');
 const fsPromises = require('fs/promises');
 const { TrackPresenceValidator, TrackParser, TrackStreamer, ReversibleActionsFactory } = require('../src/FileActions');
 const { BusboyActionsFactory } = require('../src/RequestActions');
+const SearchController = require('../src/Controllers/SearchController.js');
+const TrackFieldsValidator = require('../src/FileActions/TrackFieldsValidator.js');
 
 const testConfig = new TestConfig();
 
@@ -203,7 +205,8 @@ describe('TrackController', () => {
         const trackBaseData = {
           title: new ObjectId().toHexString(),
           albumName: new ObjectId().toHexString(),
-          artistName: new ObjectId().toHexString()
+          artistName: new ObjectId().toHexString(),
+          cover: {}
         };
         const app = createApp(dbClient, trackBaseData);
 
@@ -231,12 +234,14 @@ describe('TrackController', () => {
         const existingTrack = {
           title: new ObjectId().toHexString(),
           albumName: new ObjectId().toHexString(),
-          artistName: new ObjectId().toHexString()
+          artistName: new ObjectId().toHexString(),
+          cover: {}
         };
         const newTrack = {
           title: new ObjectId().toHexString(),
           albumName: existingTrack.albumName,
-          artistName: existingTrack.artistName
+          artistName: existingTrack.artistName,
+          cover: {}
         };
         let app = createApp(dbClient, existingTrack);
 
@@ -271,12 +276,14 @@ describe('TrackController', () => {
         const existingTrack = {
           title: new ObjectId().toHexString(),
           albumName: new ObjectId().toHexString(),
-          artistName: new ObjectId().toHexString()
+          artistName: new ObjectId().toHexString(),
+          cover: {}
         };
         const newTrack = {
           title: existingTrack.title,
           albumName: existingTrack.albumName,
-          artistName: existingTrack.artistName
+          artistName: existingTrack.artistName,
+          cover: {}
         };
         let app = createApp(dbClient, existingTrack);
 
@@ -297,6 +304,28 @@ describe('TrackController', () => {
         await dbClient.close();
       }
     }).timeout(testConfig.testRunTimeout);
+
+    it('should return Bad Request when track has not cover', async () => {
+      const dbClient = await new DbConnector(new Config()).connect();
+      try {
+        // ARRANGE
+        const trackBaseData = {
+          title: new ObjectId().toHexString(),
+          albumName: new ObjectId().toHexString(),
+          artistName: new ObjectId().toHexString()
+          /* cover: {} */
+        };
+        const app = createApp(dbClient, trackBaseData);
+
+        // ACT, ASSERT
+        await request(app)
+          .post('/validate')
+          .set('Content-type', 'multipart/form-data')
+          .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' });
+      } finally {
+        await dbClient.close();
+      }
+    }).timeout(testConfig.testRunTimeout);
   });
 
   describe('GET /stream/:id', () => {
@@ -305,17 +334,63 @@ describe('TrackController', () => {
       // Na pewn można posprawdzać czy żądanie ostatecznie się wykona pozytywnie.
     });
   });
+
+  describe('GET cover/:id', () => {
+    it('should get cover from album', async () => {
+      const dbClient = await new DbConnector(new Config()).connect();
+      let trackFileIds = [];
+      try {
+        // ARRANGE
+        const app = createApp(dbClient);
+
+        await dbClient.db().collection('artists').deleteMany({ 'albums.tracks.title': testConfig.flacFileMetadata.title });
+
+        const httpResponseBody = await request(app)
+          .post('/')
+          .timeout(testConfig.uploadFlacFileTestTimeout)
+          .set('Content-type', 'multipart/form-data')
+          .attach('file1', testConfig.flacFilePath, { contentType: 'audio/flac' })
+          .expect(200)
+          .then(({ body }) => ({ trackFileIds: body }));
+
+        trackFileIds = httpResponseBody.trackFileIds;
+
+        const { trackSearchResults } = await request(app)
+          .get('/search/' + testConfig.flacFileMetadata.title)
+          .expect(200)
+          .then(({ body }) => ({ trackSearchResults: body }));
+
+        // ACT
+        const { cover } = await request(app)
+          .get('/cover/' + trackSearchResults[0].albumId)
+          .expect(200)
+          .then(({ body }) => ({ cover: body }));
+
+        // ASSERT
+        assert.ok(typeof cover.format === 'string');
+        assert.ok(typeof cover.data === 'string');
+      } finally {
+        await dbClient.db().collection('artists').deleteMany({ 'albums.tracks._id': new ObjectId(trackFileIds[0]) });
+        await dbClient.close();
+      }
+    }).timeout(testConfig.uploadFlacFileTestTimeout * 2);
+  });
 });
 
 function createApp (dbClient, trackBaseData) {
   const app = express();
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const trackParser = trackBaseData ? new TrackParserTest(trackBaseData) : new TrackParser(new Logger());
+  const trackFieldsValidator = new TrackFieldsValidator(new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
   const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
-  const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackPresenceValidator, reversibleActionsFactory);
-  const controller = new TrackController(busboyActionsFactory, trackStreamer, new Logger());
-  app.use('/', controller.route());
+  const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackFieldsValidator, trackPresenceValidator, reversibleActionsFactory);
+  const searcher = new Searcher(dbClient, new Logger());
+  const trackController = new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());
+  const searchController = new SearchController(searcher);
+
+  app.use('/', trackController.route());
+  app.use('/search', searchController.route());
 
   const logger = new Logger();
   app.use((err, _req, res, _next) => {

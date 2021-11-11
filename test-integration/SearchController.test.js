@@ -14,6 +14,8 @@ const SearchResultType = require('../src/SearchActions/SearchResultType');
 const TestConfig = require('./TestConfig');
 const { TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory } = require('../src/FileActions');
 const { BusboyActionsFactory } = require('../src/RequestActions');
+const { ObjectID } = require('mongodb');
+const TrackFieldsValidator = require('../src/FileActions/TrackFieldsValidator');
 
 const testConfig = new TestConfig();
 
@@ -84,6 +86,7 @@ describe(SearchController.name, () => {
         assert.ok(searchResults.every(t => t.type === SearchResultType.track));
         assert.ok(searchResults.find(t => t.title === searchTrackPhrase));
         assert.ok(searchResults.find(t => t.title === trackBaseData.title));
+        assert.ok(searchResults.every(t => ObjectID.isValid(t.albumId)));
       } finally {
         await dbClient.close();
       }
@@ -256,6 +259,7 @@ describe(SearchController.name, () => {
         assert.strictEqual(searchByIdResult.artistName, trackBaseData.artistName);
         assert.ok(searchByIdResult.fileId);
         assert.ok(searchByIdResult.year);
+        assert.ok(Number.isInteger(searchByIdResult.number));
         assert.ok(searchByIdResult.mimetype);
       } finally {
         await dbClient.close();
@@ -304,9 +308,10 @@ describe(SearchController.name, () => {
 
         assert.ok(searchByIdResult.tracks[0]);
         assert.strictEqual(searchByIdResult.tracks[0].title, trackBaseData.title);
+        assert.strictEqual(searchByIdResult.tracks[0].albumId, searchByIdResult._id);
         assert.ok(searchByIdResult.tracks[0].fileId);
         assert.ok(searchByIdResult.tracks[0].mimetype);
-        assert.ok(searchByIdResult.tracks[0].number);
+        assert.ok(Number.isInteger(searchByIdResult.tracks[0].number));
         assert.ok(searchByIdResult.artistId);
       } finally {
         await dbClient.close();
@@ -382,9 +387,11 @@ function createSearchController (dbClient) {
 function createTrackController (dbClient, trackBaseData) {
   const trackParser = new TrackParserTest(trackBaseData);
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
+  const trackFieldsValidator = new TrackFieldsValidator(new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
   const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
-  const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackPresenceValidator, reversibleActionsFactory);
+  const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackFieldsValidator, trackPresenceValidator, reversibleActionsFactory);
+  const searcher = new Searcher(dbClient, new Logger());
 
-  return new TrackController(busboyActionsFactory, trackStreamer, new Logger());
+  return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());
 }

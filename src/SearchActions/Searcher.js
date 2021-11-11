@@ -100,6 +100,7 @@ module.exports = class Searcher {
     const album = await this._dbClient.db().collection('artists').aggregate([
       { $unwind: '$albums' },
       { $match: { 'albums._id': guid } },
+      { $unwind: '$albums.tracks' },
       {
         $project:
         {
@@ -108,8 +109,31 @@ module.exports = class Searcher {
           artistName: '$name',
           artistId: '$_id',
           year: '$albums.year',
-          type: SearchResultType.album,
-          tracks: '$albums.tracks'
+          track: {
+            _id: '$albums.tracks._id',
+            fileId: '$albums.tracks.fileId',
+            albumId: '$albums._id',
+            title: '$albums.tracks.title',
+            number: '$albums.tracks.number',
+            duration: '$albums.tracks.duration',
+            albumName: '$albums.tracks.albumName',
+            artistName: '$albums.tracks.artistName',
+            year: '$albums.tracks.year',
+            mimetype: '$albums.tracks.mimetype'
+          },
+          type: SearchResultType.album
+        }
+      },
+      {
+        $group:
+        {
+          _id: '$_id',
+          name: { $first: '$name' },
+          artistName: { $first: '$artistName' },
+          artistId: { $first: '$artistId' },
+          year: { $first: '$year' },
+          tracks: { $addToSet: '$track' },
+          type: { $first: '$type' }
         }
       }
     ]).next();
@@ -129,6 +153,7 @@ module.exports = class Searcher {
           fileId: '$albums.tracks.fileId',
           albumId: '$albums._id',
           title: '$albums.tracks.title',
+          number: '$albums.tracks.number',
           duration: '$albums.tracks.duration',
           albumName: '$albums.tracks.albumName',
           artistName: '$albums.tracks.artistName',
@@ -150,6 +175,7 @@ module.exports = class Searcher {
       {
         $project: {
           _id: '$albums.tracks._id',
+          albumId: '$albums._id',
           type: SearchResultType.track,
           title: '$albums.tracks.title',
           albumName: '$albums.name',
