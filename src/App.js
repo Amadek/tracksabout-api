@@ -11,6 +11,7 @@ const fs = require('fs/promises');
 const assert = require('assert');
 const { TrackParser, TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory } = require('./FileActions');
 const { BusboyActionsFactory } = require('./RequestActions');
+const TrackFieldsValidator = require('./FileActions/TrackFieldsValidator');
 
 class App {
   constructor (dbConnector, config, logger) {
@@ -56,9 +57,10 @@ class App {
   _createTrackController (dbClient) {
     const trackParser = new TrackParser(new Logger());
     const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
+    const trackFieldsValidator = new TrackFieldsValidator(new Logger());
     const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
     const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
-    const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackPresenceValidator, reversibleActionsFactory);
+    const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackFieldsValidator, trackPresenceValidator, reversibleActionsFactory);
     const searcher = new Searcher(dbClient, new Logger());
 
     return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());

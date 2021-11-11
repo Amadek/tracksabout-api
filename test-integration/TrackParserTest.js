@@ -13,11 +13,16 @@ module.exports = class TrackParserTest extends ITrackParser {
   parse (_fileStream, _mimetype) {
     return {
       number: Math.floor(Math.random() * 100 + 1),
-      artistName: this._trackBaseData?.artistName ?? new ObjectId().toHexString(),
       title: this._trackBaseData?.title ?? new ObjectId().toHexString(),
+      duration: '30',
       albumName: this._trackBaseData?.albumName ?? new ObjectId().toHexString(),
+      artistName: this._trackBaseData?.artistName ?? new ObjectId().toHexString(),
       year: 1998,
       mimetype: 'audio/flac'
     };
+  }
+
+  getCover (_fileStream, _mimetype) {
+    return this._trackBaseData.cover;
   }
 };

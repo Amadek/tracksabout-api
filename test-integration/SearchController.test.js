@@ -15,6 +15,7 @@ const TestConfig = require('./TestConfig');
 const { TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory } = require('../src/FileActions');
 const { BusboyActionsFactory } = require('../src/RequestActions');
 const { ObjectID } = require('mongodb');
+const TrackFieldsValidator = require('../src/FileActions/TrackFieldsValidator');
 
 const testConfig = new TestConfig();
 
@@ -386,9 +387,10 @@ function createSearchController (dbClient) {
 function createTrackController (dbClient, trackBaseData) {
   const trackParser = new TrackParserTest(trackBaseData);
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
+  const trackFieldsValidator = new TrackFieldsValidator(new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
   const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
-  const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackPresenceValidator, reversibleActionsFactory);
+  const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackFieldsValidator, trackPresenceValidator, reversibleActionsFactory);
   const searcher = new Searcher(dbClient, new Logger());
 
   return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());

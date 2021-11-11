@@ -41,11 +41,15 @@ module.exports = class TrackParser extends ITrackParser {
     this._logger.log(this, `Parsing begins for getting track cover, mimeType = ${mimetype}`);
     const metadata = await mm.parseStream(fileStream, { mimeType: mimetype });
 
-    if (!metadata.common.picture[0]) return null;
+    if (!metadata.common.picture || !metadata.common.picture[0]) {
+      this._logger.log(this, 'Track cover not found on file.');
+      return null;
+    }
 
     assert.ok(metadata.common.picture[0].format);
     assert.ok(metadata.common.picture[0].data);
 
+    this._logger.log(this, 'Track cover found.');
     const cover = metadata.common.picture[0];
     return {
       format: cover.format,

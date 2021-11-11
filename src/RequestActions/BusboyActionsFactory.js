@@ -6,11 +6,13 @@ const BusboyStreamReaderToValidateTrack = require('./BusboyStreamReaderToValidat
 module.exports = class BusboyActionsFactory {
   /**
    * @param {import('../FileActions/ITrackParser')} trackParser
+   * @param {import('../FileActions/TrackFieldsValidator')} trackFieldsValidator
    * @param {import('../FileActions/TrackPresenceValidator')} trackPresenceValidator
    * @param {import('../FileActions/ReversibleActionsFactory')} reversibleActionsFactory
    */
-  constructor (trackParser, trackPresenceValidator, reversibleActionsFactory) {
+  constructor (trackParser, trackFieldsValidator, trackPresenceValidator, reversibleActionsFactory) {
     assert.ok(trackParser); this._trackParser = trackParser;
+    assert.ok(trackFieldsValidator); this._trackFieldsValidator = trackFieldsValidator;
     assert.ok(trackPresenceValidator); this._trackPresenceValidator = trackPresenceValidator;
     assert.ok(reversibleActionsFactory); this._reversibleActionsFactory = reversibleActionsFactory;
   }
@@ -20,6 +22,6 @@ module.exports = class BusboyActionsFactory {
   }
 
   createStreamReaderToValidateTrack () {
-    return new BusboyStreamReaderToValidateTrack(this._trackParser, this._trackPresenceValidator, new Logger());
+    return new BusboyStreamReaderToValidateTrack(this._trackParser, this._trackFieldsValidator, this._trackPresenceValidator, new Logger());
   }
 };
