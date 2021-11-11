@@ -4,6 +4,7 @@ const assert = require('assert');
 const Logger = require('../Logging/Logger');
 const Config = require('../Config');
 const fetch = require('node-fetch');
+const jwt = require('jsonwebtoken');
 
 module.exports = class AuthController {
   /**
@@ -64,10 +65,13 @@ module.exports = class AuthController {
       }
 
       const accessToken = await this._getAccessToken(req.query.client_id, req.query.code /* request token */);
+      assert.ok(accessToken);
       const gitHubUserId = await this._getGitHubUserId(accessToken);
+      assert.ok(gitHubUserId);
+      const jsonWebToken = this._createJWT(gitHubUserId);
 
       const redirectUrl = new URL(req.query.redirect_url.toString());
-      redirectUrl.searchParams.append('gitHubUserId', gitHubUserId);
+      redirectUrl.searchParams.append('jwt', jsonWebToken);
 
       res.redirect(redirectUrl.toString());
     } catch (error) {
@@ -114,5 +118,10 @@ module.exports = class AuthController {
     if (!getGitHubUserResponse.ok) throw new Error(JSON.stringify(getGitHubUserJson));
 
     return getGitHubUserJson.id;
+  }
+
+  _createJWT (gitHubUserId) {
+    const token = jwt.sign({ gitHubUserId }, this._config.jwtSignPassword, { algorithm: 'HS256' });
+    return token;
   }
 };
