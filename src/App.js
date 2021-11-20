@@ -13,6 +13,8 @@ const { TrackParser, TrackPresenceValidator, TrackStreamer, ReversibleActionsFac
 const { BusboyActionsFactory } = require('./RequestActions');
 const TrackFieldsValidator = require('./FileActions/TrackFieldsValidator');
 const AuthController = require('./Controllers/AuthController');
+const LoggerFactory = require('./Logging/LoggerFactory');
+const JwtManagerHS256 = require('./Controllers/JwtManagerHS256');
 
 class App {
   constructor (dbConnector, config, logger) {
@@ -43,7 +45,7 @@ class App {
     });
     app.use('/auth', this._createAuthController(config).route());
     app.use('/track', this._createTrackController(dbClient).route());
-    app.use('/search', this._createSearchController(dbClient).route());
+    app.use('/search', this._createSearchController(dbClient, config).route());
     // Any other route should throw Not Found.
     app.use((_req, _res, next) => next(new NotFound()));
 
@@ -57,7 +59,10 @@ class App {
   }
 
   _createAuthController (config) {
-    return new AuthController(config);
+    const loggerFactory = new LoggerFactory();
+    const jwtManager = new JwtManagerHS256(config, loggerFactory);
+
+    return new AuthController(config, jwtManager, loggerFactory);
   }
 
   _createTrackController (dbClient) {
@@ -72,9 +77,12 @@ class App {
     return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());
   }
 
-  _createSearchController (dbClient) {
+  _createSearchController (dbClient, config) {
+    const loggerFactory = new LoggerFactory();
     const searcher = new Searcher(dbClient, new Logger());
-    return new SearchController(searcher);
+    const jwtManager = new JwtManagerHS256(config, loggerFactory);
+
+    return new SearchController(searcher, jwtManager);
   }
 
   async _readCertFiles (certKeyPath, certFilePath) {

@@ -14,15 +14,17 @@ const SearchResultType = require('../src/SearchActions/SearchResultType');
 const TestConfig = require('./TestConfig');
 const { TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory } = require('../src/FileActions');
 const { BusboyActionsFactory } = require('../src/RequestActions');
-const { ObjectID } = require('mongodb');
 const TrackFieldsValidator = require('../src/FileActions/TrackFieldsValidator');
+const LoggerFactory = require('../src/Logging/LoggerFactory');
+const DummyJwtManager = require('./DummyJwtManager');
 
 const testConfig = new TestConfig();
 
 describe(SearchController.name, () => {
   describe('GET /search/:phrase', () => {
     it('should validate search phrase', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const config = new Config();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const trackBaseData = {
@@ -30,19 +32,19 @@ describe(SearchController.name, () => {
           albumName: new ObjectId().toHexString(),
           artistName: new ObjectId().toHexString()
         };
-        const app = createApp(dbClient, trackBaseData);
+        const app = createApp(dbClient, trackBaseData, config);
 
         // ACT, ASSERT
         await request(app)
-          .get('/search/')
+          .get('/search/?jwt=JWT_TOKEN')
           .expect(404);
 
         await request(app)
-          .get('/search/ab')
+          .get('/search/ab?jwt=JWT_TOKEN')
           .expect(400);
 
         await request(app)
-          .get('/search/abc')
+          .get('/search/abc?jwt=JWT_TOKEN')
           .expect(200);
       } finally {
         await dbClient.close();
@@ -50,7 +52,8 @@ describe(SearchController.name, () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should return tracks', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const config = new Config();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const searchTrackPhrase = new ObjectId().toHexString();
@@ -59,26 +62,26 @@ describe(SearchController.name, () => {
           albumName: new ObjectId().toHexString(),
           artistName: new ObjectId().toHexString()
         };
-        let app = createApp(dbClient, trackBaseData);
+        let app = createApp(dbClient, trackBaseData, config);
 
         await request(app)
-          .post('/track')
+          .post('/track?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         trackBaseData.title += new ObjectId().toHexString();
-        app = createApp(dbClient, trackBaseData);
+        app = createApp(dbClient, trackBaseData, config);
 
         await request(app)
-          .post('/track')
+          .post('/track?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         // ACT, ASSERT
         const { searchResults } = await request(app)
-          .get('/search/' + searchTrackPhrase)
+          .get('/search/' + searchTrackPhrase + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ searchResults: body }));
 
@@ -86,14 +89,15 @@ describe(SearchController.name, () => {
         assert.ok(searchResults.every(t => t.type === SearchResultType.track));
         assert.ok(searchResults.find(t => t.title === searchTrackPhrase));
         assert.ok(searchResults.find(t => t.title === trackBaseData.title));
-        assert.ok(searchResults.every(t => ObjectID.isValid(t.albumId)));
+        assert.ok(searchResults.every(t => ObjectId.isValid(t.albumId)));
       } finally {
         await dbClient.close();
       }
     }).timeout(testConfig.testRunTimeout);
 
     it('should return albums', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const config = new Config();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const searchAlbumPhrase = new ObjectId().toHexString();
@@ -102,26 +106,26 @@ describe(SearchController.name, () => {
           albumName: searchAlbumPhrase,
           artistName: new ObjectId().toHexString()
         };
-        let app = createApp(dbClient, trackBaseData);
+        let app = createApp(dbClient, trackBaseData, config);
 
         await request(app)
-          .post('/track')
+          .post('/track?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         trackBaseData.albumName += new ObjectId().toHexString();
-        app = createApp(dbClient, trackBaseData);
+        app = createApp(dbClient, trackBaseData, config);
 
         await request(app)
-          .post('/track')
+          .post('/track?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         // ACT, ASSERT
         const { searchResults } = await request(app)
-          .get('/search/' + searchAlbumPhrase)
+          .get('/search/' + searchAlbumPhrase + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ searchResults: body }));
 
@@ -135,7 +139,8 @@ describe(SearchController.name, () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should return artists', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const config = new Config();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const searchArtistPhrase = new ObjectId().toHexString();
@@ -144,26 +149,26 @@ describe(SearchController.name, () => {
           albumName: new ObjectId().toHexString(),
           artistName: searchArtistPhrase
         };
-        let app = createApp(dbClient, trackBaseData);
+        let app = createApp(dbClient, trackBaseData, config);
 
         await request(app)
-          .post('/track')
+          .post('/track?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         trackBaseData.artistName += new ObjectId().toHexString();
-        app = createApp(dbClient, trackBaseData);
+        app = createApp(dbClient, trackBaseData, config);
 
         await request(app)
-          .post('/track')
+          .post('/track?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         // ACT, ASSERT
         const { searchResults } = await request(app)
-          .get('/search/' + searchArtistPhrase)
+          .get('/search/' + searchArtistPhrase + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ searchResults: body }));
 
@@ -177,7 +182,8 @@ describe(SearchController.name, () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should ignore case sensitivity', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const config = new Config();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const searchTrackPhrase = new ObjectId().toHexString();
@@ -186,26 +192,26 @@ describe(SearchController.name, () => {
           albumName: new ObjectId().toHexString(),
           artistName: new ObjectId().toHexString()
         };
-        let app = createApp(dbClient, trackBaseData);
+        let app = createApp(dbClient, trackBaseData, config);
 
         await request(app)
-          .post('/track')
+          .post('/track?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         trackBaseData.title += new ObjectId().toHexString();
-        app = createApp(dbClient, trackBaseData);
+        app = createApp(dbClient, trackBaseData, config);
 
         await request(app)
-          .post('/track')
+          .post('/track?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         // ACT, ASSERT
         const { searchResults } = await request(app)
-          .get('/search/' + searchTrackPhrase.toUpperCase())
+          .get('/search/' + searchTrackPhrase.toUpperCase() + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ searchResults: body }));
 
@@ -221,7 +227,8 @@ describe(SearchController.name, () => {
 
   describe('GET /search/id/:id', () => {
     it('should return track by id', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const config = new Config();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const searchTrackPhrase = new ObjectId().toHexString();
@@ -230,16 +237,16 @@ describe(SearchController.name, () => {
           albumName: new ObjectId().toHexString(),
           artistName: new ObjectId().toHexString()
         };
-        const app = createApp(dbClient, trackBaseData);
+        const app = createApp(dbClient, trackBaseData, config);
 
         await request(app)
-          .post('/track')
+          .post('/track?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         const { searchResults } = await request(app)
-          .get('/search/' + searchTrackPhrase)
+          .get('/search/' + searchTrackPhrase + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ searchResults: body }));
 
@@ -247,7 +254,7 @@ describe(SearchController.name, () => {
 
         // ACT
         const { searchByIdResult } = await request(app)
-          .get('/search/id/' + uploadedTrack._id)
+          .get('/search/id/' + uploadedTrack._id + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ searchByIdResult: body }));
 
@@ -267,7 +274,8 @@ describe(SearchController.name, () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should return album by id', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const config = new Config();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const searchAlbumPhrase = new ObjectId().toHexString();
@@ -276,16 +284,16 @@ describe(SearchController.name, () => {
           albumName: searchAlbumPhrase,
           artistName: new ObjectId().toHexString()
         };
-        const app = createApp(dbClient, trackBaseData);
+        const app = createApp(dbClient, trackBaseData, config);
 
         await request(app)
-          .post('/track')
+          .post('/track?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         const { searchResults } = await request(app)
-          .get('/search/' + searchAlbumPhrase)
+          .get('/search/' + searchAlbumPhrase + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ searchResults: body }));
 
@@ -293,7 +301,7 @@ describe(SearchController.name, () => {
 
         // ACT
         const { searchByIdResult } = await request(app)
-          .get('/search/id/' + uploadedAlbum._id)
+          .get('/search/id/' + uploadedAlbum._id + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ searchByIdResult: body }));
 
@@ -319,7 +327,8 @@ describe(SearchController.name, () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should return artist by id', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const config = new Config();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const searchArtistPhrase = new ObjectId().toHexString();
@@ -328,16 +337,16 @@ describe(SearchController.name, () => {
           albumName: new ObjectId().toHexString(),
           artistName: searchArtistPhrase
         };
-        const app = createApp(dbClient, trackBaseData);
+        const app = createApp(dbClient, trackBaseData, config);
 
         await request(app)
-          .post('/track')
+          .post('/track?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         const { searchResults } = await request(app)
-          .get('/search/' + searchArtistPhrase)
+          .get('/search/' + searchArtistPhrase + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ searchResults: body }));
 
@@ -345,7 +354,7 @@ describe(SearchController.name, () => {
 
         // ACT
         const { searchByIdResult } = await request(app)
-          .get('/search/id/' + uploadedArtist._id)
+          .get('/search/id/' + uploadedArtist._id + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ searchByIdResult: body }));
 
@@ -364,9 +373,9 @@ describe(SearchController.name, () => {
   });
 });
 
-function createApp (dbClient, trackBaseData) {
+function createApp (dbClient, trackBaseData, config) {
   const app = express();
-  app.use('/search', createSearchController(dbClient).route());
+  app.use('/search', createSearchController(dbClient, config).route());
   app.use('/track', createTrackController(dbClient, trackBaseData).route());
 
   const logger = new Logger();
@@ -378,10 +387,12 @@ function createApp (dbClient, trackBaseData) {
   return app;
 }
 
-function createSearchController (dbClient) {
+function createSearchController (dbClient, config) {
+  const loggerFactory = new LoggerFactory();
+  const jwtManager = new DummyJwtManager(config, loggerFactory);
   const searcher = new Searcher(dbClient, new Logger());
 
-  return new SearchController(searcher);
+  return new SearchController(searcher, jwtManager);
 }
 
 function createTrackController (dbClient, trackBaseData) {

@@ -1,18 +1,22 @@
 const { Router } = require('express');
 const { BadRequest } = require('http-errors');
 const assert = require('assert');
-const Logger = require('../Logging/Logger');
 const Config = require('../Config');
 const fetch = require('node-fetch');
 const jwt = require('jsonwebtoken');
+const JwtManagerHS256 = require('./JwtManagerHS256');
+const LoggerFactory = require('../Logging/LoggerFactory');
 
 module.exports = class AuthController {
   /**
    * @param {Config} config
+   * @param {JwtManagerHS256} jwtManager
+   * @param {LoggerFactory} loggerFactory
    */
-  constructor (config) {
+  constructor (config, jwtManager, loggerFactory) {
     assert.ok(config instanceof Config); this._config = config;
-    this._logger = new Logger();
+    assert.ok(jwtManager instanceof JwtManagerHS256); this._jwtManager = jwtManager;
+    assert.ok(loggerFactory instanceof LoggerFactory); this._logger = loggerFactory.create(this);
   }
 
   route () {
@@ -37,11 +41,11 @@ module.exports = class AuthController {
 
       const authorizeUrl = new URL('https://github.com/login/oauth/authorize');
       authorizeUrl.searchParams.append('client_id', req.query.client_id.toString());
-      authorizeUrl.searchParams.append('redirect_uri', 'https://' + internalRedirectUrl.toString());
+      authorizeUrl.searchParams.append('redirect_uri', 'https://' + internalRedirectUrl.href);
 
-      this._logger.log(this, 'Redirecting to: ' + authorizeUrl.toString());
+      this._logger.log('Redirecting to: ' + authorizeUrl.href);
 
-      res.redirect(authorizeUrl.toString());
+      res.redirect(authorizeUrl.href);
     } catch (error) {
       next(error);
     }

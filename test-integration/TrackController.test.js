@@ -15,13 +15,16 @@ const { TrackPresenceValidator, TrackParser, TrackStreamer, ReversibleActionsFac
 const { BusboyActionsFactory } = require('../src/RequestActions');
 const SearchController = require('../src/Controllers/SearchController.js');
 const TrackFieldsValidator = require('../src/FileActions/TrackFieldsValidator.js');
+const LoggerFactory = require('../src/Logging/LoggerFactory.js');
+const DummyJwtManager = require('./DummyJwtManager.js');
 
 const testConfig = new TestConfig();
+const config = new Config();
 
 describe('TrackController', () => {
   describe('POST /', () => {
     it('should upload tracks to DB', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const trackBaseData = {
@@ -29,7 +32,7 @@ describe('TrackController', () => {
           albumName: new ObjectId().toHexString(),
           artistName: new ObjectId().toHexString()
         };
-        const app = createApp(dbClient, trackBaseData);
+        const app = createApp(dbClient, trackBaseData, config);
 
         // ACT
         const { trackIds } = await request(app)
@@ -59,11 +62,11 @@ describe('TrackController', () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should upload tracks with metadata to DB', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const dbClient = await new DbConnector(config).connect();
       let trackIds = [];
       try {
         // ARRANGE
-        const app = createApp(dbClient);
+        const app = createApp(dbClient, null, config);
         const { size: trackFileSize } = await fsPromises.stat(testConfig.flacFilePath);
 
         await dbClient.db().collection('artists').deleteMany({ 'albums.tracks.title': testConfig.flacFileMetadata.title });
@@ -103,10 +106,10 @@ describe('TrackController', () => {
     }).timeout(testConfig.uploadFlacFileTestTimeout * 2);
 
     it('should return Bad Request when track is not a valid FLAC', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
-        const app = createApp(dbClient);
+        const app = createApp(dbClient, null, config);
 
         // ACT
         await request(app)
@@ -121,14 +124,14 @@ describe('TrackController', () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should return BadRequest when no file was uploading', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const app = createApp(dbClient, {
           title: new ObjectId().toHexString(),
           albumName: new ObjectId().toHexString(),
           artistName: new ObjectId().toHexString()
-        });
+        }, config);
 
         // ACT, ASSERT
         await request(app)
@@ -140,14 +143,14 @@ describe('TrackController', () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should return Conflict when track with specified name already exists', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const app = createApp(dbClient, {
           title: new ObjectId().toHexString(),
           albumName: new ObjectId().toHexString(),
           artistName: new ObjectId().toHexString()
-        });
+        }, config);
 
         // ACT, ASSERT
         await request(app)
@@ -167,7 +170,7 @@ describe('TrackController', () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should return Conflict and rollback changes when uploading duplicate tracks', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const trackBaseData = {
@@ -175,7 +178,7 @@ describe('TrackController', () => {
           albumName: new ObjectId().toHexString(),
           artistName: new ObjectId().toHexString()
         };
-        const app = createApp(dbClient, trackBaseData);
+        const app = createApp(dbClient, trackBaseData, config);
 
         // ACT, ASSERT
         await request(app)
@@ -199,7 +202,7 @@ describe('TrackController', () => {
 
   describe('POST /validate', () => {
     it('should return OK when track has not artist yet in database', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const trackBaseData = {
@@ -208,7 +211,7 @@ describe('TrackController', () => {
           artistName: new ObjectId().toHexString(),
           cover: {}
         };
-        const app = createApp(dbClient, trackBaseData);
+        const app = createApp(dbClient, trackBaseData, config);
 
         // ACT, ASSERT
         const parsedTrack = await request(app)
@@ -228,7 +231,7 @@ describe('TrackController', () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should return OK when track has not artist\'s album yet in database', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const existingTrack = {
@@ -243,14 +246,14 @@ describe('TrackController', () => {
           artistName: existingTrack.artistName,
           cover: {}
         };
-        let app = createApp(dbClient, existingTrack);
+        let app = createApp(dbClient, existingTrack, config);
 
         await request(app)
           .post('/')
           .set('Content-type', 'multipart/form-data')
           .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' });
 
-        app = createApp(dbClient, newTrack);
+        app = createApp(dbClient, newTrack, config);
 
         // ACT, ASSERT
         const parsedTrack = await request(app)
@@ -270,7 +273,7 @@ describe('TrackController', () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should return Conflict when track already exists in artist\'s album in database', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const existingTrack = {
@@ -285,14 +288,14 @@ describe('TrackController', () => {
           artistName: existingTrack.artistName,
           cover: {}
         };
-        let app = createApp(dbClient, existingTrack);
+        let app = createApp(dbClient, existingTrack, config);
 
         await request(app)
           .post('/')
           .set('Content-type', 'multipart/form-data')
           .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' });
 
-        app = createApp(dbClient, newTrack);
+        app = createApp(dbClient, newTrack, config);
 
         // ACT, ASSERT
         await request(app)
@@ -306,7 +309,7 @@ describe('TrackController', () => {
     }).timeout(testConfig.testRunTimeout);
 
     it('should return Bad Request when track has not cover', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const dbClient = await new DbConnector(config).connect();
       try {
         // ARRANGE
         const trackBaseData = {
@@ -315,7 +318,7 @@ describe('TrackController', () => {
           artistName: new ObjectId().toHexString()
           /* cover: {} */
         };
-        const app = createApp(dbClient, trackBaseData);
+        const app = createApp(dbClient, trackBaseData, config);
 
         // ACT, ASSERT
         await request(app)
@@ -337,11 +340,11 @@ describe('TrackController', () => {
 
   describe('GET cover/:id', () => {
     it('should get cover from album', async () => {
-      const dbClient = await new DbConnector(new Config()).connect();
+      const dbClient = await new DbConnector(config).connect();
       let trackFileIds = [];
       try {
         // ARRANGE
-        const app = createApp(dbClient);
+        const app = createApp(dbClient, null, config);
 
         await dbClient.db().collection('artists').deleteMany({ 'albums.tracks.title': testConfig.flacFileMetadata.title });
 
@@ -356,7 +359,7 @@ describe('TrackController', () => {
         trackFileIds = httpResponseBody.trackFileIds;
 
         const { trackSearchResults } = await request(app)
-          .get('/search/' + testConfig.flacFileMetadata.title)
+          .get('/search/' + testConfig.flacFileMetadata.title + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ trackSearchResults: body }));
 
@@ -377,8 +380,10 @@ describe('TrackController', () => {
   });
 });
 
-function createApp (dbClient, trackBaseData) {
+function createApp (dbClient, trackBaseData, config) {
   const app = express();
+  const loggerFactory = new LoggerFactory();
+  const jwtManager = new DummyJwtManager(config, loggerFactory);
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const trackParser = trackBaseData ? new TrackParserTest(trackBaseData) : new TrackParser(new Logger());
   const trackFieldsValidator = new TrackFieldsValidator(new Logger());
@@ -387,7 +392,7 @@ function createApp (dbClient, trackBaseData) {
   const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackFieldsValidator, trackPresenceValidator, reversibleActionsFactory);
   const searcher = new Searcher(dbClient, new Logger());
   const trackController = new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());
-  const searchController = new SearchController(searcher);
+  const searchController = new SearchController(searcher, jwtManager);
 
   app.use('/', trackController.route());
   app.use('/search', searchController.route());
