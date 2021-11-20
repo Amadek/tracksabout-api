@@ -15,6 +15,7 @@ const TrackFieldsValidator = require('./FileActions/TrackFieldsValidator');
 const AuthController = require('./Controllers/AuthController');
 const LoggerFactory = require('./Logging/LoggerFactory');
 const JwtManagerHS256 = require('./Controllers/JwtManagerHS256');
+const UserManager = require('./Users/UserManager');
 
 class App {
   constructor (dbConnector, config, logger) {
@@ -43,7 +44,7 @@ class App {
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
       next();
     });
-    app.use('/auth', this._createAuthController(config).route());
+    app.use('/auth', this._createAuthController(dbClient, config).route());
     app.use('/track', this._createTrackController(dbClient).route());
     app.use('/search', this._createSearchController(dbClient, config).route());
     // Any other route should throw Not Found.
@@ -58,11 +59,12 @@ class App {
     return app;
   }
 
-  _createAuthController (config) {
+  _createAuthController (dbClient, config) {
     const loggerFactory = new LoggerFactory();
     const jwtManager = new JwtManagerHS256(config, loggerFactory);
+    const userManager = new UserManager(dbClient, loggerFactory);
 
-    return new AuthController(config, jwtManager, loggerFactory);
+    return new AuthController(config, jwtManager, userManager, loggerFactory);
   }
 
   _createTrackController (dbClient) {

@@ -6,16 +6,20 @@ const fetch = require('node-fetch');
 const jwt = require('jsonwebtoken');
 const JwtManagerHS256 = require('./JwtManagerHS256');
 const LoggerFactory = require('../Logging/LoggerFactory');
+const UserManager = require('../Users/UserManager');
+const GitHubUser = require('../Users/GitHubUser');
 
 module.exports = class AuthController {
   /**
    * @param {Config} config
    * @param {JwtManagerHS256} jwtManager
+   * @param {UserManager} userManager
    * @param {LoggerFactory} loggerFactory
    */
-  constructor (config, jwtManager, loggerFactory) {
+  constructor (config, jwtManager, userManager, loggerFactory) {
     assert.ok(config instanceof Config); this._config = config;
     assert.ok(jwtManager instanceof JwtManagerHS256); this._jwtManager = jwtManager;
+    assert.ok(userManager instanceof UserManager); this._userManager = userManager;
     assert.ok(loggerFactory instanceof LoggerFactory); this._logger = loggerFactory.create(this);
   }
 
@@ -69,10 +73,9 @@ module.exports = class AuthController {
       }
 
       const accessToken = await this._getAccessToken(req.query.client_id, req.query.code /* request token */);
-      assert.ok(accessToken);
-      const gitHubUserId = await this._getGitHubUserId(accessToken);
-      assert.ok(gitHubUserId);
-      const jsonWebToken = this._createJWT(gitHubUserId);
+      const gitHubUser = await this._getGitHubUser(accessToken);
+      await this._userManager.addUser(gitHubUser);
+      const jsonWebToken = this._jwtManager.create(gitHubUser._id);
 
       const redirectUrl = new URL(req.query.redirect_url.toString());
       redirectUrl.searchParams.append('jwt', jsonWebToken);
@@ -109,7 +112,7 @@ module.exports = class AuthController {
     return getAccessTokenJson.access_token;
   }
 
-  async _getGitHubUserId (accessToken) {
+  async _getGitHubUser (accessToken) {
     const getGitHubUserResponse = await fetch('https://api.github.com/user', {
       headers: {
         Authorization: 'token ' + accessToken,
@@ -118,10 +121,14 @@ module.exports = class AuthController {
     });
 
     const getGitHubUserJson = await getGitHubUserResponse.json();
+    this._logger.log(getGitHubUserJson);
 
     if (!getGitHubUserResponse.ok) throw new Error(JSON.stringify(getGitHubUserJson));
 
-    return getGitHubUserJson.id;
+    return new GitHubUser({
+      id: getGitHubUserJson.id,
+      login: getGitHubUserJson.login
+    });
   }
 
   _createJWT (gitHubUserId) {
