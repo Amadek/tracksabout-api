@@ -26,7 +26,7 @@ module.exports = class AuthController {
   route () {
     const router = Router();
     router.get('/', this._getAuth.bind(this));
-    router.get('/redirect', this.getAuthRedirect.bind(this));
+    router.get('/redirect', this._getAuthRedirect.bind(this));
     return router;
   }
 
@@ -60,7 +60,7 @@ module.exports = class AuthController {
    * @param {import('express').Response} res
    * @param {import('express').NextFunction} next
    */
-  async getAuthRedirect (req, res, next) {
+  async _getAuthRedirect (req, res, next) {
     try {
       if (!req.query.client_id || !req.query.code || !req.query.redirect_url) throw new BadRequest();
 
@@ -121,13 +121,13 @@ module.exports = class AuthController {
     });
 
     const getGitHubUserJson = await getGitHubUserResponse.json();
-    this._logger.log(getGitHubUserJson);
 
     if (!getGitHubUserResponse.ok) throw new Error(JSON.stringify(getGitHubUserJson));
 
     return new GitHubUser({
       id: getGitHubUserJson.id,
-      login: getGitHubUserJson.login
+      login: getGitHubUserJson.login,
+      avatarUrl: getGitHubUserJson.avatar_url
     });
   }
 

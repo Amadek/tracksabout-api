@@ -19,7 +19,7 @@ module.exports = class UserManager {
   async addUser (gitHubUser) {
     assert.ok(gitHubUser instanceof GitHubUser);
 
-    const userFromDb = this._dbClient.db().collection('users').findOne({ _id: gitHubUser._id });
+    const userFromDb = await this._dbClient.db().collection('users').findOne({ _id: gitHubUser._id });
     if (userFromDb) {
       this._logger.log(`User with _id: ${gitHubUser._id} already exists, OK, ending.`);
       return;
@@ -27,5 +27,17 @@ module.exports = class UserManager {
 
     await this._dbClient.db().collection('users').insertOne(gitHubUser);
     this._logger.log(`New user with _id: ${gitHubUser._id} added to DB.`);
+  }
+
+  /**
+   * @param {number} userId
+   * @returns {Promise<GitHubUser>} user
+   */
+  async getUser (userId) {
+    assert.ok(typeof userId === 'number');
+    const userFromDb = await this._dbClient.db().collection('users').findOne({ _id: userId });
+    if (!userFromDb) return null;
+
+    return new GitHubUser({ id: userFromDb._id, login: userFromDb.login, avatarUrl: userFromDb.avatarUrl });
   }
 };

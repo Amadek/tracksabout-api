@@ -1,21 +1,18 @@
 const DbConnector = require('./DbConnector');
 const express = require('express');
-const TrackController = require('./Controllers/TrackController');
 const { NotFound } = require('http-errors');
 const Logger = require('./Logging/Logger');
 const Config = require('./Config');
 const Searcher = require('./SearchActions/Searcher');
-const SearchController = require('./Controllers/SearchController');
 const https = require('https');
 const fs = require('fs/promises');
 const assert = require('assert');
 const { TrackParser, TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory } = require('./FileActions');
 const { BusboyActionsFactory } = require('./RequestActions');
 const TrackFieldsValidator = require('./FileActions/TrackFieldsValidator');
-const AuthController = require('./Controllers/AuthController');
 const LoggerFactory = require('./Logging/LoggerFactory');
-const JwtManagerHS256 = require('./Controllers/JwtManagerHS256');
 const UserManager = require('./Users/UserManager');
+const { TrackController, SearchController, AuthController, UserController, JwtManagerHS256 } = require('./Controllers');
 
 class App {
   constructor (dbConnector, config, logger) {
@@ -47,6 +44,7 @@ class App {
     app.use('/auth', this._createAuthController(dbClient, config).route());
     app.use('/track', this._createTrackController(dbClient).route());
     app.use('/search', this._createSearchController(dbClient, config).route());
+    app.use('/user', this._createUserController(dbClient, config).route());
     // Any other route should throw Not Found.
     app.use((_req, _res, next) => next(new NotFound()));
 
@@ -85,6 +83,13 @@ class App {
     const jwtManager = new JwtManagerHS256(config, loggerFactory);
 
     return new SearchController(searcher, jwtManager);
+  }
+
+  _createUserController (dbClient, config) {
+    const loggerFactory = new LoggerFactory();
+    const jwtManager = new JwtManagerHS256(config, loggerFactory);
+    const userManager = new UserManager(dbClient, loggerFactory);
+    return new UserController(jwtManager, userManager);
   }
 
   async _readCertFiles (certKeyPath, certFilePath) {
