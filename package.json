@@ -6,6 +6,7 @@
   "scripts": {
     "start": "DEBUG=tracksabout-api:*,express:router node src/App.js",
     "test": "mocha test-*/*.test.js",
+    "test-unit": "mocha test-unit/*.test.js",
     "debug": "DEBUG=tracksabout-api:* mocha test-*/*.test.js"
   },
   "repository": {

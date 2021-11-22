@@ -6,7 +6,11 @@ module.exports = class DummyJwtManager extends JwtManagerHS256 {
     return `${new ObjectId().toHexString}.${new ObjectId().toHexString}.${new ObjectId().toHexString}`;
   }
 
-  parse () {
-    return { gitHubUserId: new ObjectId().toHexString() };
+  /**
+   * @param {string} _jwt
+   * @returns {{ gitHubUserId: number }} parsed token
+   */
+  parse (_jwt) {
+    return { gitHubUserId: 1 };
   }
 };

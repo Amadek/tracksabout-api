@@ -45,9 +45,13 @@ module.exports = class ArtistHierarchyUpdater extends IReversibleAction {
 
   /**
    * @async
+   * @param {object} parsedTrack
+   * @param {number} userId
    * @returns {Promise<{updated: boolean, message: string?, updatedArtist: object|null}>}
    */
-  async update (parsedTrack) {
+  async update (parsedTrack, userId) {
+    assert.ok(parsedTrack);
+    assert.ok(userId);
     this._logger.log(this, 'Check artist hierarchy started.');
 
     const db = this._dbClient.db();
@@ -78,6 +82,7 @@ module.exports = class ArtistHierarchyUpdater extends IReversibleAction {
     }
 
     parsedTrack._id = new ObjectId();
+    parsedTrack.userId = userId;
     artistAlbum.tracks.push(parsedTrack);
     this._insertedTrack = parsedTrack;
     this._logger.log(this, 'Track not exists yet - updating Artist hierarchy\n' + JSON.stringify(parsedTrack, null, 2));

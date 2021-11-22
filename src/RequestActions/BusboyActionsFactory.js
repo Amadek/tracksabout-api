@@ -17,8 +17,13 @@ module.exports = class BusboyActionsFactory {
     assert.ok(reversibleActionsFactory); this._reversibleActionsFactory = reversibleActionsFactory;
   }
 
-  createStreamReaderToUploadTrack () {
-    return new BusboyStreamReaderToUploadTrack(this._trackParser, this._reversibleActionsFactory, new Logger());
+  /**
+   * @param {number} userId
+   * @returns {BusboyStreamReaderToUploadTrack} stream reader to upload track
+   */
+  createStreamReaderToUploadTrack (userId) {
+    assert.ok(typeof userId === 'number');
+    return new BusboyStreamReaderToUploadTrack(this._trackParser, this._reversibleActionsFactory, userId, new Logger());
   }
 
   createStreamReaderToValidateTrack () {

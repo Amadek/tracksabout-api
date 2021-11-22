@@ -66,6 +66,8 @@ class App {
   }
 
   _createTrackController (dbClient) {
+    const loggerFactory = new LoggerFactory();
+    const jwtManager = new JwtManagerHS256(config, loggerFactory);
     const trackParser = new TrackParser(new Logger());
     const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
     const trackFieldsValidator = new TrackFieldsValidator(new Logger());
@@ -74,7 +76,7 @@ class App {
     const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackFieldsValidator, trackPresenceValidator, reversibleActionsFactory);
     const searcher = new Searcher(dbClient, new Logger());
 
-    return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());
+    return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, jwtManager, new Logger());
   }
 
   _createSearchController (dbClient, config) {

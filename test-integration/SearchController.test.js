@@ -376,7 +376,7 @@ describe(SearchController.name, () => {
 function createApp (dbClient, trackBaseData, config) {
   const app = express();
   app.use('/search', createSearchController(dbClient, config).route());
-  app.use('/track', createTrackController(dbClient, trackBaseData).route());
+  app.use('/track', createTrackController(dbClient, trackBaseData, config).route());
 
   const logger = new Logger();
   app.use((err, _req, res, _next) => {
@@ -395,14 +395,16 @@ function createSearchController (dbClient, config) {
   return new SearchController(searcher, jwtManager);
 }
 
-function createTrackController (dbClient, trackBaseData) {
+function createTrackController (dbClient, trackBaseData, config) {
+  const loggerFactory = new LoggerFactory();
   const trackParser = new TrackParserTest(trackBaseData);
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const trackFieldsValidator = new TrackFieldsValidator(new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
   const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
   const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackFieldsValidator, trackPresenceValidator, reversibleActionsFactory);
+  const jwtManager = new DummyJwtManager(config, loggerFactory);
   const searcher = new Searcher(dbClient, new Logger());
 
-  return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());
+  return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, jwtManager, new Logger());
 }

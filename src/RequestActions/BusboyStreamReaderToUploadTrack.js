@@ -2,17 +2,21 @@ const assert = require('assert');
 const { Conflict, BadRequest } = require('http-errors');
 const BusboyStreamReader = require('./BusboyStreamReader');
 const { PassThrough } = require('stream');
+const { ITrackParser } = require('../FileActions');
+const ReversibleActionsFactory = require('../FileActions/ReversibleActionsFactory');
 
 module.exports = class BusboyStreamReaderToUploadTrack extends BusboyStreamReader {
   /**
-   * @param {import('../FileActions/ITrackParser')} trackParser
-   * @param {import('../FileActions/ReversibleActionsFactory')} reversibleActionsFactory
+   * @param {ITrackParser} trackParser
+   * @param {ReversibleActionsFactory} reversibleActionsFactory
+   * @param {number} userId
    * @param {import('../Logging/Logger')} logger
    */
-  constructor (trackParser, reversibleActionsFactory, logger) {
+  constructor (trackParser, reversibleActionsFactory, userId, logger) {
     super(logger);
-    assert.ok(trackParser); this._trackParser = trackParser;
-    assert.ok(reversibleActionsFactory); this._reversibleActionsFactory = reversibleActionsFactory;
+    assert.ok(trackParser instanceof ITrackParser); this._trackParser = trackParser;
+    assert.ok(reversibleActionsFactory instanceof ReversibleActionsFactory); this._reversibleActionsFactory = reversibleActionsFactory;
+    assert.ok(userId); this._userId = userId;
 
     this._updateArtistQueue = Promise.resolve({ updated: false, message: null, updatedArtist: null });
   }
@@ -47,7 +51,7 @@ module.exports = class BusboyStreamReaderToUploadTrack extends BusboyStreamReade
     const artistHierarchyUpdater = this._reversibleActionsFactory.createArtistHierarchyUpdater();
     const trackUploader = this._reversibleActionsFactory.createTrackUploader();
 
-    this._updateArtistQueue = this._updateArtistQueue.then(() => artistHierarchyUpdater.update(parsedTrack));
+    this._updateArtistQueue = this._updateArtistQueue.then(() => artistHierarchyUpdater.update(parsedTrack, this._userId));
     const updateArtistResult = await this._updateArtistQueue;
     if (!updateArtistResult.updated) throw new Conflict(updateArtistResult.message);
     this.addActionToUndo(artistHierarchyUpdater);

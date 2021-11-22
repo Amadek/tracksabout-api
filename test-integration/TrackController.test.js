@@ -36,7 +36,7 @@ describe('TrackController', () => {
 
         // ACT
         const { trackIds } = await request(app)
-          .post('/')
+          .post('/?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200)
@@ -54,6 +54,7 @@ describe('TrackController', () => {
         assert.strictEqual(artist.albums[0].name, trackBaseData.albumName);
         assert.strictEqual(artist.albums[0].tracks.length, 1);
         assert.strictEqual(artist.albums[0].tracks[0].title, trackBaseData.title);
+        assert.strictEqual(artist.albums[0].tracks[0].userId, 1);
         assert.ok(artist.albums[0].tracks[0].fileId);
         assert.ok(artist.albums[0].tracks[0].number);
       } finally {
@@ -73,7 +74,7 @@ describe('TrackController', () => {
 
         // ACT
         const httpResponseBody = await request(app)
-          .post('/')
+          .post('/?jwt=JWT_TOKEN')
           .timeout(testConfig.uploadFlacFileTestTimeout)
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.flacFilePath, { contentType: 'audio/flac' })
@@ -94,6 +95,7 @@ describe('TrackController', () => {
         assert.strictEqual(artist.albums[0].name, testConfig.flacFileMetadata.albumName);
         assert.strictEqual(artist.albums[0].tracks.length, 1);
         assert.strictEqual(artist.albums[0].tracks[0].title, testConfig.flacFileMetadata.title);
+        assert.strictEqual(artist.albums[0].tracks[0].userId, 1);
         assert.ok(artist.albums[0].tracks[0].fileId);
         assert.ok(artist.albums[0].tracks[0].number);
 
@@ -113,7 +115,7 @@ describe('TrackController', () => {
 
         // ACT
         await request(app)
-          .post('/')
+          .post('/?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           // ASSERT
@@ -135,7 +137,7 @@ describe('TrackController', () => {
 
         // ACT, ASSERT
         await request(app)
-          .post('/')
+          .post('/?jwt=JWT_TOKEN')
           .expect(400);
       } finally {
         await dbClient.close();
@@ -154,13 +156,13 @@ describe('TrackController', () => {
 
         // ACT, ASSERT
         await request(app)
-          .post('/')
+          .post('/?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200);
 
         await request(app)
-          .post('/')
+          .post('/?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(409);
@@ -182,7 +184,7 @@ describe('TrackController', () => {
 
         // ACT, ASSERT
         await request(app)
-          .post('/')
+          .post('/?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('flac', testConfig.flacFilePath, { contentType: 'audio/flac' })
           .attach('flac', testConfig.flacFilePath, { contentType: 'audio/flac' })
@@ -198,6 +200,24 @@ describe('TrackController', () => {
         await dbClient.close();
       }
     }).timeout(testConfig.uploadFlacFileTestTimeout);
+
+    it('should return Unauthorised when JWT token not provided in query', async () => {
+      const dbClient = await new DbConnector(config).connect();
+      try {
+        // ARRANGE
+        const app = createApp(dbClient, null, config);
+
+        // ACT
+        await request(app)
+          .post('/')
+          .set('Content-type', 'multipart/form-data')
+          .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
+          // ASSERT
+          .expect(401);
+      } finally {
+        await dbClient.close();
+      }
+    }).timeout(testConfig.testRunTimeout);
   });
 
   describe('POST /validate', () => {
@@ -215,7 +235,7 @@ describe('TrackController', () => {
 
         // ACT, ASSERT
         const parsedTrack = await request(app)
-          .post('/validate')
+          .post('/validate?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200)
@@ -249,7 +269,7 @@ describe('TrackController', () => {
         let app = createApp(dbClient, existingTrack, config);
 
         await request(app)
-          .post('/')
+          .post('/?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' });
 
@@ -257,7 +277,7 @@ describe('TrackController', () => {
 
         // ACT, ASSERT
         const parsedTrack = await request(app)
-          .post('/validate')
+          .post('/validate?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(200)
@@ -291,7 +311,7 @@ describe('TrackController', () => {
         let app = createApp(dbClient, existingTrack, config);
 
         await request(app)
-          .post('/')
+          .post('/?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' });
 
@@ -299,7 +319,7 @@ describe('TrackController', () => {
 
         // ACT, ASSERT
         await request(app)
-          .post('/validate')
+          .post('/validate?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
           .expect(409);
@@ -322,7 +342,7 @@ describe('TrackController', () => {
 
         // ACT, ASSERT
         await request(app)
-          .post('/validate')
+          .post('/validate?jwt=JWT_TOKEN')
           .set('Content-type', 'multipart/form-data')
           .attach('flac', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' });
       } finally {
@@ -349,7 +369,7 @@ describe('TrackController', () => {
         await dbClient.db().collection('artists').deleteMany({ 'albums.tracks.title': testConfig.flacFileMetadata.title });
 
         const httpResponseBody = await request(app)
-          .post('/')
+          .post('/?jwt=JWT_TOKEN')
           .timeout(testConfig.uploadFlacFileTestTimeout)
           .set('Content-type', 'multipart/form-data')
           .attach('file1', testConfig.flacFilePath, { contentType: 'audio/flac' })
@@ -365,7 +385,7 @@ describe('TrackController', () => {
 
         // ACT
         const { cover } = await request(app)
-          .get('/cover/' + trackSearchResults[0].albumId)
+          .get('/cover/' + trackSearchResults[0].albumId + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ cover: body }));
 
@@ -391,7 +411,7 @@ function createApp (dbClient, trackBaseData, config) {
   const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
   const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackFieldsValidator, trackPresenceValidator, reversibleActionsFactory);
   const searcher = new Searcher(dbClient, new Logger());
-  const trackController = new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());
+  const trackController = new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, jwtManager, new Logger());
   const searchController = new SearchController(searcher, jwtManager);
 
   app.use('/', trackController.route());

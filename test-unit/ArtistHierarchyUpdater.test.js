@@ -8,6 +8,7 @@ describe('ArtistHierarchyUpdater', () => {
   describe('update()', () => {
     it('should create artist when artist from track does not exist', async () => {
       // ARRANGE
+      const userId = 1;
       const uploadedTrack = {
         title: new ObjectId().toHexString(),
         albumName: new ObjectId().toHexString(),
@@ -32,7 +33,7 @@ describe('ArtistHierarchyUpdater', () => {
       })();
       const updater = new ArtistHierarchyUpdater(dbClient, new Logger());
       // ACT
-      const result = await updater.update(uploadedTrack);
+      const result = await updater.update(uploadedTrack, userId);
 
       // ASSERT
       assert.ok(result.updated);
@@ -45,6 +46,7 @@ describe('ArtistHierarchyUpdater', () => {
 
     it('should create album when artist from track does not have specific album', done => {
       // ARRANGE
+      const userId = 1;
       const uploadedTrack = {
         title: new ObjectId().toHexString(),
         albumName: new ObjectId().toHexString(),
@@ -65,7 +67,7 @@ describe('ArtistHierarchyUpdater', () => {
       };
       const updater = new ArtistHierarchyUpdater(dbClient, new Logger());
       // ACT
-      updater.update(uploadedTrack)
+      updater.update(uploadedTrack, userId)
         .then(result => {
           // ASSERT
           assert.ok(result.updated);
@@ -81,6 +83,7 @@ describe('ArtistHierarchyUpdater', () => {
 
     it('should create track when album from track does not have specific track', done => {
       // ARRANGE
+      const userId = 1;
       const uploadedTrack = {
         title: new ObjectId().toHexString(),
         albumName: new ObjectId().toHexString(),
@@ -101,7 +104,7 @@ describe('ArtistHierarchyUpdater', () => {
       };
       const updater = new ArtistHierarchyUpdater(dbClient, new Logger());
       // ACT
-      updater.update(uploadedTrack)
+      updater.update(uploadedTrack, userId)
         .then(result => {
           // ASSERT
           assert.ok(result.updated);
@@ -117,6 +120,7 @@ describe('ArtistHierarchyUpdater', () => {
 
     it('should not create track when album from track has specific track', done => {
       // ARRANGE
+      const userId = 1;
       const uploadedTrack = {
         title: new ObjectId().toHexString(),
         albumName: new ObjectId().toHexString(),
@@ -137,7 +141,7 @@ describe('ArtistHierarchyUpdater', () => {
       };
       const updater = new ArtistHierarchyUpdater(dbClient, new Logger());
       // ACT
-      updater.update(uploadedTrack)
+      updater.update(uploadedTrack, userId)
         .then(result => {
           // ASSERT
           assert.strictEqual(result.updated, false);
