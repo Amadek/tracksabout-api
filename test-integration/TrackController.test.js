@@ -11,7 +11,7 @@ const TrackParserTest = require('./TrackParserTest');
 const Searcher = require('../src/SearchActions/Searcher');
 const TestConfig = require('./TestConfig');
 const fsPromises = require('fs/promises');
-const { TrackPresenceValidator, TrackParser, TrackStreamer, ReversibleActionsFactory } = require('../src/FileActions');
+const { TrackPresenceValidator, TrackParser, TrackStreamer, ReversibleActionsFactory, TrackRemover } = require('../src/FileActions');
 const { BusboyActionsFactory } = require('../src/RequestActions');
 const SearchController = require('../src/Controllers/SearchController.js');
 const TrackFieldsValidator = require('../src/FileActions/TrackFieldsValidator.js');
@@ -220,6 +220,132 @@ describe('TrackController', () => {
     }).timeout(testConfig.testRunTimeout);
   });
 
+  describe('DELETE /', () => {
+    it('should remove artist when has only one album with one track', async () => {
+      const dbClient = await new DbConnector(config).connect();
+      try {
+        // ARRANGE
+        const trackBaseData = {
+          title: new ObjectId().toHexString(),
+          albumName: new ObjectId().toHexString(),
+          artistName: new ObjectId().toHexString(),
+          cover: {}
+        };
+        const app = createApp(dbClient, trackBaseData, config);
+
+        const { trackIds } = await request(app)
+          .post('/?jwt=JWT_TOKEN')
+          .set('Content-type', 'multipart/form-data')
+          .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
+          .expect(200)
+          .then(({ body }) => ({ trackIds: body }));
+
+        const artist = await dbClient.db().collection('artists')
+          .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
+
+        // ACT
+        const { deletedObjectType } = await request(app)
+          .delete('/' + artist.albums[0].tracks[0]._id)
+          .expect(200)
+          .then(({ body }) => ({ deletedObjectType: body }));
+
+        // ASSERT
+        assert.strictEqual(deletedObjectType, 'artist');
+      } finally {
+        await dbClient.close();
+      }
+    }).timeout(testConfig.testRunTimeout);
+
+    it('should remove album with one track from artist with multiple albums', async () => {
+      const dbClient = await new DbConnector(config).connect();
+      try {
+        // ARRANGE
+        const trackBaseData = {
+          title: new ObjectId().toHexString(),
+          albumName: new ObjectId().toHexString(),
+          artistName: new ObjectId().toHexString(),
+          cover: {}
+        };
+        const app = createApp(dbClient, trackBaseData, config);
+
+        await request(app)
+          .post('/?jwt=JWT_TOKEN')
+          .set('Content-type', 'multipart/form-data')
+          .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
+          .expect(200)
+          .then(({ body }) => ({ trackIds: body }));
+
+        trackBaseData.title = new ObjectId().toHexString();
+        trackBaseData.albumName = new ObjectId().toHexString();
+
+        const { trackIds } = await request(app)
+          .post('/?jwt=JWT_TOKEN')
+          .set('Content-type', 'multipart/form-data')
+          .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
+          .expect(200)
+          .then(({ body }) => ({ trackIds: body }));
+
+        const artist = await dbClient.db().collection('artists')
+          .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
+
+        // ACT
+        const { deletedObjectType } = await request(app)
+          .delete('/' + artist.albums[0].tracks[0]._id)
+          .expect(200)
+          .then(({ body }) => ({ deletedObjectType: body }));
+
+        // ASSERT
+        assert.strictEqual(deletedObjectType, 'album');
+      } finally {
+        await dbClient.close();
+      }
+    }).timeout(testConfig.testRunTimeout);
+
+    it('should remove album with one track from artist with multiple albums', async () => {
+      const dbClient = await new DbConnector(config).connect();
+      try {
+        // ARRANGE
+        const trackBaseData = {
+          title: new ObjectId().toHexString(),
+          albumName: new ObjectId().toHexString(),
+          artistName: new ObjectId().toHexString(),
+          cover: {}
+        };
+        const app = createApp(dbClient, trackBaseData, config);
+
+        await request(app)
+          .post('/?jwt=JWT_TOKEN')
+          .set('Content-type', 'multipart/form-data')
+          .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
+          .expect(200)
+          .then(({ body }) => ({ trackIds: body }));
+
+        trackBaseData.title = new ObjectId().toHexString();
+
+        const { trackIds } = await request(app)
+          .post('/?jwt=JWT_TOKEN')
+          .set('Content-type', 'multipart/form-data')
+          .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
+          .expect(200)
+          .then(({ body }) => ({ trackIds: body }));
+
+        const artist = await dbClient.db().collection('artists')
+          .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
+
+        // ACT
+        const { deletedObjectType } = await request(app)
+          .delete('/' + artist.albums[0].tracks[0]._id)
+          .expect(200)
+          .then(({ body }) => ({ deletedObjectType: body }));
+
+        // ASSERT
+        assert.strictEqual(deletedObjectType, 'track');
+      } finally {
+        await dbClient.close();
+      }
+    }).timeout(testConfig.testRunTimeout);
+  });
+
   describe('POST /validate', () => {
     it('should return OK when track has not artist yet in database', async () => {
       const dbClient = await new DbConnector(config).connect();
@@ -406,12 +532,13 @@ function createApp (dbClient, trackBaseData, config) {
   const jwtManager = new DummyJwtManager(config, loggerFactory);
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const trackParser = trackBaseData ? new TrackParserTest(trackBaseData) : new TrackParser(new Logger());
+  const trackRemover = new TrackRemover(dbClient, loggerFactory);
   const trackFieldsValidator = new TrackFieldsValidator(new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
   const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);
   const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackFieldsValidator, trackPresenceValidator, reversibleActionsFactory);
   const searcher = new Searcher(dbClient, new Logger());
-  const trackController = new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, jwtManager, new Logger());
+  const trackController = new TrackController(busboyActionsFactory, trackStreamer, trackParser, trackRemover, searcher, jwtManager, new Logger());
   const searchController = new SearchController(searcher, jwtManager);
 
   app.use('/', trackController.route());

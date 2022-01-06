@@ -6,6 +6,7 @@ const TrackParser = require('./TrackParser');
 const TrackStreamer = require('./TrackStreamer');
 const TrackPresenceValidator = require('./TrackPresenceValidator');
 const TrackUploader = require('./TrackUploader');
+const TrackRemover = require('./TrackRemover');
 
 module.exports = {
   ArtistHierarchyUpdater,
@@ -14,6 +15,7 @@ module.exports = {
   ReversibleActionsFactory,
   TrackParser,
   TrackPresenceValidator,
+  TrackRemover,
   TrackStreamer,
   TrackUploader
 };

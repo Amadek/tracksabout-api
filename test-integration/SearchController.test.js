@@ -12,7 +12,7 @@ const TrackParserTest = require('./TrackParserTest');
 const { ObjectId } = require('mongodb');
 const SearchResultType = require('../src/SearchActions/SearchResultType');
 const TestConfig = require('./TestConfig');
-const { TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory } = require('../src/FileActions');
+const { TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory, TrackRemover } = require('../src/FileActions');
 const { BusboyActionsFactory } = require('../src/RequestActions');
 const TrackFieldsValidator = require('../src/FileActions/TrackFieldsValidator');
 const LoggerFactory = require('../src/Logging/LoggerFactory');
@@ -398,6 +398,7 @@ function createSearchController (dbClient, config) {
 function createTrackController (dbClient, trackBaseData, config) {
   const loggerFactory = new LoggerFactory();
   const trackParser = new TrackParserTest(trackBaseData);
+  const trackRemover = new TrackRemover(dbClient, loggerFactory);
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const trackFieldsValidator = new TrackFieldsValidator(new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
@@ -406,5 +407,5 @@ function createTrackController (dbClient, trackBaseData, config) {
   const jwtManager = new DummyJwtManager(config, loggerFactory);
   const searcher = new Searcher(dbClient, new Logger());
 
-  return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, jwtManager, new Logger());
+  return new TrackController(busboyActionsFactory, trackStreamer, trackParser, trackRemover, searcher, jwtManager, new Logger());
 }
