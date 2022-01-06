@@ -83,10 +83,12 @@ module.exports = class TrackController {
     assert.ok(next);
 
     try {
+      const token = this._validateToken(req);
+
       if (!req.params.id || !ObjectId.isValid(req.params.id)) throw new BadRequest('Track Id is empty or invalid!');
       const trackId = new ObjectId(req.params.id);
 
-      const removeTrackResult = await this._trackRemover.remove(trackId);
+      const removeTrackResult = await this._trackRemover.remove(trackId, token.gitHubUserId);
       if (!removeTrackResult.success) throw new BadRequest(removeTrackResult.message);
 
       res.json(removeTrackResult.deletedObjectType);

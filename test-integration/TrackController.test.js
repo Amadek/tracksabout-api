@@ -245,7 +245,7 @@ describe('TrackController', () => {
 
         // ACT
         const { deletedObjectType } = await request(app)
-          .delete('/' + artist.albums[0].tracks[0]._id)
+          .delete('/' + artist.albums[0].tracks[0]._id + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ deletedObjectType: body }));
 
@@ -290,7 +290,7 @@ describe('TrackController', () => {
 
         // ACT
         const { deletedObjectType } = await request(app)
-          .delete('/' + artist.albums[0].tracks[0]._id)
+          .delete('/' + artist.albums[0].tracks[0]._id + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ deletedObjectType: body }));
 
@@ -334,12 +334,46 @@ describe('TrackController', () => {
 
         // ACT
         const { deletedObjectType } = await request(app)
-          .delete('/' + artist.albums[0].tracks[0]._id)
+          .delete('/' + artist.albums[0].tracks[0]._id + '?jwt=JWT_TOKEN')
           .expect(200)
           .then(({ body }) => ({ deletedObjectType: body }));
 
         // ASSERT
         assert.strictEqual(deletedObjectType, 'track');
+      } finally {
+        await dbClient.close();
+      }
+    }).timeout(testConfig.testRunTimeout);
+
+    it('should return Bad Request when user does not own track to delete', async () => {
+      const dbClient = await new DbConnector(config).connect();
+      try {
+        // ARRANGE
+        const trackBaseData = {
+          title: new ObjectId().toHexString(),
+          albumName: new ObjectId().toHexString(),
+          artistName: new ObjectId().toHexString(),
+          cover: {}
+        };
+        const jwtManagerSimulationConfig = { gitHubUserId: 1 };
+        const app = createApp(dbClient, trackBaseData, config, jwtManagerSimulationConfig);
+
+        const { trackIds } = await request(app)
+          .post('/?jwt=JWT_TOKEN')
+          .set('Content-type', 'multipart/form-data')
+          .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
+          .expect(200)
+          .then(({ body }) => ({ trackIds: body }));
+
+        jwtManagerSimulationConfig.gitHubUserId = 2;
+
+        const artist = await dbClient.db().collection('artists')
+          .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
+
+        // ACT, ASERT
+        await request(app)
+          .delete('/' + artist.albums[0].tracks[0]._id + '?jwt=JWT_TOKEN')
+          .expect(400);
       } finally {
         await dbClient.close();
       }
@@ -526,10 +560,10 @@ describe('TrackController', () => {
   });
 });
 
-function createApp (dbClient, trackBaseData, config) {
+function createApp (dbClient, trackBaseData, config, jwtManagerSimulationConfig) {
   const app = express();
   const loggerFactory = new LoggerFactory();
-  const jwtManager = new DummyJwtManager(config, loggerFactory);
+  const jwtManager = new DummyJwtManager(config, loggerFactory, jwtManagerSimulationConfig);
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const trackParser = trackBaseData ? new TrackParserTest(trackBaseData) : new TrackParser(new Logger());
   const trackRemover = new TrackRemover(dbClient, loggerFactory);

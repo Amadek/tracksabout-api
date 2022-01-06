@@ -2,6 +2,15 @@ const { ObjectId } = require('mongodb');
 const JwtManagerHS256 = require('../src/Controllers/JwtManagerHS256');
 
 module.exports = class DummyJwtManager extends JwtManagerHS256 {
+  /**
+   * @param {import('../src/Config')} config
+   * @param {import('../src/Logging/LoggerFactory')} loggerFactory
+   */
+  constructor (config, loggerFactory, simulationConfig) {
+    super(config, loggerFactory);
+    this._simulationConfig = simulationConfig;
+  }
+
   create () {
     return `${new ObjectId().toHexString}.${new ObjectId().toHexString}.${new ObjectId().toHexString}`;
   }
@@ -11,6 +20,7 @@ module.exports = class DummyJwtManager extends JwtManagerHS256 {
    * @returns {{ gitHubUserId: number }} parsed token
    */
   parse (_jwt) {
-    return { gitHubUserId: 1 };
+    const gitHubUserId = this._simulationConfig?.gitHubUserId ?? 1;
+    return { gitHubUserId };
   }
 };

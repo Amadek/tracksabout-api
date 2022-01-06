@@ -12,12 +12,16 @@ module.exports = class TrackRemover {
 
   /**
    * @param {import('mongodb').ObjectId} trackId
+   * @param {number} userId
    */
-  async remove (trackId) {
+  async remove (trackId, userId) {
     const artist = await this._dbClient.db().collection('artists').findOne({ 'albums.tracks._id': trackId });
     if (!artist) return { success: false, message: `Track with provided id ${trackId.toHexString()} does not exist.` };
 
     const album = artist.albums.find(a => a.tracks.some(t => t._id.toHexString() === trackId.toHexString()));
+    const userTrack = album.tracks.find(t => t._id.toHexString() === trackId.toHexString() && t.userId === userId);
+    if (!userTrack) return { success: false, message: `Track with provided id ${trackId.toHexString()} belongs to another user, not to ${userId}.` };
+
     if (album.tracks.length !== 1) {
       await this._dbClient.db().collection('artists').updateOne({}, { $pull: { 'albums.$[].tracks': { _id: trackId } } });
       this._logger.log(`Track ${trackId.toHexString()} removed.`);
