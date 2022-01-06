@@ -68,7 +68,7 @@ module.exports = class SearchController {
   _validateToken (req) {
     if (!req.query.jwt) throw new BadRequest('JWT token not provided.');
 
-    const token = this._jwtManager.parse(req.query.jwt);
+    const token = this._jwtManager.parse(req.query.jwt, req.ip);
     if (!token) throw new BadRequest('JWT token cannot be parsed and verified.');
 
     return token;

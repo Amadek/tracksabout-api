@@ -75,7 +75,7 @@ module.exports = class AuthController {
       const accessToken = await this._getAccessToken(req.query.client_id, req.query.code /* request token */);
       const gitHubUser = await this._getGitHubUser(accessToken);
       await this._userManager.addUser(gitHubUser);
-      const jsonWebToken = this._jwtManager.create(gitHubUser._id);
+      const jsonWebToken = this._jwtManager.create(gitHubUser._id, req.ip);
 
       const redirectUrl = new URL(req.query.redirect_url.toString());
       redirectUrl.searchParams.append('jwt', jsonWebToken);

@@ -134,7 +134,7 @@ module.exports = class TrackController {
   _validateToken (req) {
     if (!req.query.jwt) throw new Unauthorized('JWT token not provided.');
 
-    const token = this._jwtManager.parse(req.query.jwt);
+    const token = this._jwtManager.parse(req.query.jwt, req.ip);
     if (!token) throw new Unauthorized('JWT token cannot be parsed and verified.');
 
     return token;
