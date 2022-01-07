@@ -1,10 +1,10 @@
 const assert = require('assert');
 const { Router } = require('express');
-const { BadRequest, NotFound, Unauthorized } = require('http-errors');
+const { BadRequest, NotFound, Unauthorized, Gone } = require('http-errors');
 const Busboy = require('busboy');
 const { BusboyInPromiseWrapper, BusboyActionsFactory } = require('../RequestActions');
 const Logger = require('../Logging/Logger');
-const { ObjectId } = require('mongodb');
+const { ObjectId, MongoGridFSChunkError } = require('mongodb');
 const TrackStreamer = require('../FileActions/TrackStreamer');
 const { ITrackParser, TrackRemover } = require('../FileActions');
 const Searcher = require('../SearchActions/Searcher');
@@ -129,6 +129,7 @@ module.exports = class TrackController {
     try {
       await this._trackStreamer.stream(req, res);
     } catch (error) {
+      if (error instanceof MongoGridFSChunkError) next(new Gone('Track has been propably deleted and is no longer available.'));
       next(error);
     }
   }
