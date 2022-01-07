@@ -1,13 +1,17 @@
 const assert = require('assert');
+const { GridFSBucket } = require('mongodb');
 
 module.exports = class TrackRemover {
   /**
    * @param {import('mongodb').MongoClient} dbClient
+   * @param {import('../Config')} config
    * @param {import('../Logging/LoggerFactory')} loggerFactory
    */
-  constructor (dbClient, loggerFactory) {
+  constructor (dbClient, config, loggerFactory) {
     assert.ok(dbClient); this._dbClient = dbClient;
+    assert.ok(config); this._config = config;
     assert.ok(loggerFactory); this._logger = loggerFactory.create(this);
+    this._bucket = new GridFSBucket(this._dbClient.db(), { chunkSizeBytes: 1024, bucketName: 'tracks' });
   }
 
   /**
@@ -19,17 +23,21 @@ module.exports = class TrackRemover {
     if (!artist) return { success: false, message: `Track with provided id ${trackId.toHexString()} does not exist.` };
 
     const album = artist.albums.find(a => a.tracks.some(t => t._id.toHexString() === trackId.toHexString()));
-    const userTrack = album.tracks.find(t => t._id.toHexString() === trackId.toHexString() && t.userId === userId);
-    if (!userTrack) return { success: false, message: `Track with provided id ${trackId.toHexString()} belongs to another user, not to ${userId}.` };
+    const userTrack = album.tracks.find(t => t._id.toHexString() === trackId.toHexString());
+    if (!userTrack) return { success: false, message: `Track with provided id ${trackId.toHexString()} does not exist.` };
+    if (userTrack.userId !== userId && userId !== this._config.adminId) return { success: false, message: `Track with provided id ${trackId.toHexString()} belongs to another user, not to ${userId}, which is not admin.` };
+
+    await this._bucket.delete(userTrack.fileId);
+    this._logger.log(`Track ${trackId.toHexString()} ${userTrack.fileId.toHexString()} file removed.`);
 
     if (album.tracks.length !== 1) {
-      await this._dbClient.db().collection('artists').updateOne({}, { $pull: { 'albums.$[].tracks': { _id: trackId } } });
+      await this._dbClient.db().collection('artists').updateMany({}, { $pull: { 'albums.$[].tracks': { _id: trackId } } });
       this._logger.log(`Track ${trackId.toHexString()} removed.`);
       return { success: true, deletedObjectType: 'track' };
     }
 
     if (artist.albums.length !== 1) {
-      await this._dbClient.db().collection('artists').updateOne({}, { $pull: { albums: { _id: album._id } } });
+      await this._dbClient.db().collection('artists').updateMany({}, { $pull: { albums: { _id: album._id } } });
       this._logger.log(`Album ${album._id.toHexString()} removed.`);
       return { success: true, deletedObjectType: 'album' };
     }

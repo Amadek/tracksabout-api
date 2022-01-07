@@ -240,17 +240,20 @@ describe('TrackController', () => {
           .expect(200)
           .then(({ body }) => ({ trackIds: body }));
 
-        const artist = await dbClient.db().collection('artists')
+        let artist = await dbClient.db().collection('artists')
           .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
 
         // ACT
-        const { deletedObjectType } = await request(app)
+        const { deleteTrackResponse } = await request(app)
           .delete('/' + artist.albums[0].tracks[0]._id + '?jwt=JWT_TOKEN')
           .expect(200)
-          .then(({ body }) => ({ deletedObjectType: body }));
+          .then(({ body }) => ({ deleteTrackResponse: body }));
 
         // ASSERT
-        assert.strictEqual(deletedObjectType, 'artist');
+        assert.strictEqual(deleteTrackResponse.deletedObjectType, 'artist');
+        artist = await dbClient.db().collection('artists')
+          .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
+        assert.strictEqual(artist, null);
       } finally {
         await dbClient.close();
       }
@@ -285,17 +288,20 @@ describe('TrackController', () => {
           .expect(200)
           .then(({ body }) => ({ trackIds: body }));
 
-        const artist = await dbClient.db().collection('artists')
+        let artist = await dbClient.db().collection('artists')
           .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
 
         // ACT
-        const { deletedObjectType } = await request(app)
+        const { deleteTrackResponse } = await request(app)
           .delete('/' + artist.albums[0].tracks[0]._id + '?jwt=JWT_TOKEN')
           .expect(200)
-          .then(({ body }) => ({ deletedObjectType: body }));
+          .then(({ body }) => ({ deleteTrackResponse: body }));
 
         // ASSERT
-        assert.strictEqual(deletedObjectType, 'album');
+        assert.strictEqual(deleteTrackResponse.deletedObjectType, 'album');
+        artist = await dbClient.db().collection('artists')
+          .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
+        assert.strictEqual(artist.albums.length, 1);
       } finally {
         await dbClient.close();
       }
@@ -329,17 +335,20 @@ describe('TrackController', () => {
           .expect(200)
           .then(({ body }) => ({ trackIds: body }));
 
-        const artist = await dbClient.db().collection('artists')
+        let artist = await dbClient.db().collection('artists')
           .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
 
         // ACT
-        const { deletedObjectType } = await request(app)
+        const { deleteTrackResponse } = await request(app)
           .delete('/' + artist.albums[0].tracks[0]._id + '?jwt=JWT_TOKEN')
           .expect(200)
-          .then(({ body }) => ({ deletedObjectType: body }));
+          .then(({ body }) => ({ deleteTrackResponse: body }));
 
         // ASSERT
-        assert.strictEqual(deletedObjectType, 'track');
+        assert.strictEqual(deleteTrackResponse.deletedObjectType, 'track');
+        artist = await dbClient.db().collection('artists')
+          .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
+        assert.strictEqual(artist.albums[0].tracks.length, 1);
       } finally {
         await dbClient.close();
       }

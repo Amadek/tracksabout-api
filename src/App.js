@@ -38,11 +38,12 @@ class App {
     app.use(express.json());
     app.use((_req, res, next) => {
       res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', '*');
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
       next();
     });
     app.use('/auth', this._createAuthController(dbClient, config).route());
-    app.use('/track', this._createTrackController(dbClient).route());
+    app.use('/track', this._createTrackController(dbClient, config).route());
     app.use('/search', this._createSearchController(dbClient, config).route());
     app.use('/user', this._createUserController(dbClient, config).route());
     // Any other route should throw Not Found.
@@ -65,11 +66,11 @@ class App {
     return new AuthController(config, jwtManager, userManager, loggerFactory);
   }
 
-  _createTrackController (dbClient) {
+  _createTrackController (dbClient, config) {
     const loggerFactory = new LoggerFactory();
     const jwtManager = new JwtManagerHS256(config, loggerFactory);
     const trackParser = new TrackParser(new Logger());
-    const trackRemover = new TrackRemover(dbClient, loggerFactory);
+    const trackRemover = new TrackRemover(dbClient, config, loggerFactory);
     const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
     const trackFieldsValidator = new TrackFieldsValidator(new Logger());
     const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());

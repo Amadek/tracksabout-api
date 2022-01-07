@@ -91,7 +91,7 @@ module.exports = class TrackController {
       const removeTrackResult = await this._trackRemover.remove(trackId, token.gitHubUserId);
       if (!removeTrackResult.success) throw new BadRequest(removeTrackResult.message);
 
-      res.json(removeTrackResult.deletedObjectType);
+      res.json(removeTrackResult);
     } catch (error) {
       next(error);
     }
