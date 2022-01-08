@@ -127,7 +127,8 @@ module.exports = class AuthController {
     return new GitHubUser({
       id: getGitHubUserJson.id,
       login: getGitHubUserJson.login,
-      avatarUrl: getGitHubUserJson.avatar_url
+      avatarUrl: getGitHubUserJson.avatar_url,
+      isAdmin: getGitHubUserJson.id === this._config.adminId
     });
   }
 

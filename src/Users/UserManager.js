@@ -38,6 +38,6 @@ module.exports = class UserManager {
     const userFromDb = await this._dbClient.db().collection('users').findOne({ _id: userId });
     if (!userFromDb) return null;
 
-    return new GitHubUser({ id: userFromDb._id, login: userFromDb.login, avatarUrl: userFromDb.avatarUrl });
+    return new GitHubUser({ id: userFromDb._id, login: userFromDb.login, avatarUrl: userFromDb.avatarUrl, isAdmin: userFromDb.isAdmin });
   }
 };

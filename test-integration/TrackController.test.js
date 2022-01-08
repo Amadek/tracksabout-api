@@ -17,6 +17,7 @@ const SearchController = require('../src/Controllers/SearchController.js');
 const TrackFieldsValidator = require('../src/FileActions/TrackFieldsValidator.js');
 const LoggerFactory = require('../src/Logging/LoggerFactory.js');
 const DummyJwtManager = require('./DummyJwtManager.js');
+const DummyUserManager = require('./DummyUserManager.js');
 
 const testConfig = new TestConfig();
 const config = new Config();
@@ -387,6 +388,49 @@ describe('TrackController', () => {
         await dbClient.close();
       }
     }).timeout(testConfig.testRunTimeout);
+
+    it('should remove artist when user does not own track but he is an admin', async () => {
+      const dbClient = await new DbConnector(config).connect();
+      try {
+        // ARRANGE
+        const trackBaseData = {
+          title: new ObjectId().toHexString(),
+          albumName: new ObjectId().toHexString(),
+          artistName: new ObjectId().toHexString(),
+          cover: {}
+        };
+        const jwtManagerSimulationConfig = { gitHubUserId: 1 };
+        const userManagerSimulationConfig = { isAdmin: false };
+        const app = createApp(dbClient, trackBaseData, config, jwtManagerSimulationConfig, userManagerSimulationConfig);
+
+        const { trackIds } = await request(app)
+          .post('/?jwt=JWT_TOKEN')
+          .set('Content-type', 'multipart/form-data')
+          .attach('file1', testConfig.fakeFlacFilePath, { contentType: 'audio/flac' })
+          .expect(200)
+          .then(({ body }) => ({ trackIds: body }));
+
+        let artist = await dbClient.db().collection('artists')
+          .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
+
+        jwtManagerSimulationConfig.gitHubUserId = 2;
+        userManagerSimulationConfig.isAdmin = true;
+
+        // ACT
+        const { deleteTrackResponse } = await request(app)
+          .delete('/' + artist.albums[0].tracks[0]._id + '?jwt=JWT_TOKEN')
+          .expect(200)
+          .then(({ body }) => ({ deleteTrackResponse: body }));
+
+        // ASSERT
+        assert.strictEqual(deleteTrackResponse.deletedObjectType, 'artist');
+        artist = await dbClient.db().collection('artists')
+          .findOne({ 'albums.tracks.fileId': new ObjectId(trackIds[0]) });
+        assert.strictEqual(artist, null);
+      } finally {
+        await dbClient.close();
+      }
+    }).timeout(testConfig.testRunTimeout);
   });
 
   describe('POST /validate', () => {
@@ -569,13 +613,14 @@ describe('TrackController', () => {
   });
 });
 
-function createApp (dbClient, trackBaseData, config, jwtManagerSimulationConfig) {
+function createApp (dbClient, trackBaseData, config, jwtManagerSimulationConfig, userManagerSimulationConfig) {
   const app = express();
   const loggerFactory = new LoggerFactory();
   const jwtManager = new DummyJwtManager(config, loggerFactory, jwtManagerSimulationConfig);
+  const userManager = new DummyUserManager(dbClient, loggerFactory, userManagerSimulationConfig);
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const trackParser = trackBaseData ? new TrackParserTest(trackBaseData) : new TrackParser(new Logger());
-  const trackRemover = new TrackRemover(dbClient, loggerFactory);
+  const trackRemover = new TrackRemover(dbClient, userManager, config, loggerFactory);
   const trackFieldsValidator = new TrackFieldsValidator(new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
   const reversibleActionsFactory = new ReversibleActionsFactory(dbClient);

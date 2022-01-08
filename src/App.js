@@ -69,8 +69,9 @@ class App {
   _createTrackController (dbClient, config) {
     const loggerFactory = new LoggerFactory();
     const jwtManager = new JwtManagerHS256(config, loggerFactory);
+    const userManager = new UserManager(dbClient, loggerFactory);
     const trackParser = new TrackParser(new Logger());
-    const trackRemover = new TrackRemover(dbClient, config, loggerFactory);
+    const trackRemover = new TrackRemover(dbClient, userManager, config, loggerFactory);
     const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
     const trackFieldsValidator = new TrackFieldsValidator(new Logger());
     const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());

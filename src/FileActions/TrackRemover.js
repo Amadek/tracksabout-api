@@ -4,11 +4,13 @@ const { GridFSBucket } = require('mongodb');
 module.exports = class TrackRemover {
   /**
    * @param {import('mongodb').MongoClient} dbClient
+   * @param {import('../Users/UserManager')} userManager
    * @param {import('../Config')} config
    * @param {import('../Logging/LoggerFactory')} loggerFactory
    */
-  constructor (dbClient, config, loggerFactory) {
+  constructor (dbClient, userManager, config, loggerFactory) {
     assert.ok(dbClient); this._dbClient = dbClient;
+    assert.ok(userManager); this._userManager = userManager;
     assert.ok(config); this._config = config;
     assert.ok(loggerFactory); this._logger = loggerFactory.create(this);
     this._bucket = new GridFSBucket(this._dbClient.db(), { chunkSizeBytes: 1024, bucketName: 'tracks' });
@@ -25,7 +27,9 @@ module.exports = class TrackRemover {
     const album = artist.albums.find(a => a.tracks.some(t => t._id.toHexString() === trackId.toHexString()));
     const userTrack = album.tracks.find(t => t._id.toHexString() === trackId.toHexString());
     if (!userTrack) return { success: false, message: `Track with provided id ${trackId.toHexString()} does not exist.` };
-    if (userTrack.userId !== userId && userId !== this._config.adminId) return { success: false, message: `Track with provided id ${trackId.toHexString()} belongs to another user, not to ${userId}, which is not admin.` };
+
+    const user = await this._userManager.getUser(userId);
+    if (!user.isAdmin && user._id !== userTrack.userId) return { success: false, message: `Track with provided id ${trackId.toHexString()} belongs to another user, not to ${user._id}, which is not admin.` };
 
     await this._bucket.delete(userTrack.fileId);
     this._logger.log(`Track ${trackId.toHexString()} ${userTrack.fileId.toHexString()} file removed.`);
@@ -45,5 +49,9 @@ module.exports = class TrackRemover {
     await this._dbClient.db().collection('artists').deleteOne({ _id: artist._id });
     this._logger.log(`Artist ${artist._id.toHexString()} removed.`);
     return { success: true, deletedObjectType: 'artist' };
+  }
+
+  async _validateUser (userId, track) {
+
   }
 };

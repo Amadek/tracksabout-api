@@ -17,6 +17,7 @@ const { BusboyActionsFactory } = require('../src/RequestActions');
 const TrackFieldsValidator = require('../src/FileActions/TrackFieldsValidator');
 const LoggerFactory = require('../src/Logging/LoggerFactory');
 const DummyJwtManager = require('./DummyJwtManager');
+const DummyUserManager = require('./DummyUserManager');
 
 const testConfig = new TestConfig();
 
@@ -397,8 +398,9 @@ function createSearchController (dbClient, config) {
 
 function createTrackController (dbClient, trackBaseData, config) {
   const loggerFactory = new LoggerFactory();
+  const userManager = new DummyUserManager(dbClient, loggerFactory);
   const trackParser = new TrackParserTest(trackBaseData);
-  const trackRemover = new TrackRemover(dbClient, loggerFactory);
+  const trackRemover = new TrackRemover(dbClient, userManager, config, loggerFactory);
   const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
   const trackFieldsValidator = new TrackFieldsValidator(new Logger());
   const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
