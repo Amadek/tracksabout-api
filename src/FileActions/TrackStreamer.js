@@ -1,6 +1,6 @@
 const assert = require('assert');
 const { GridFSBucket, ObjectId } = require('mongodb');
-const { BadRequest } = require('http-errors');
+const { BadRequest, Gone } = require('http-errors');
 
 module.exports = class TrackStreamer {
   /**
@@ -23,6 +23,8 @@ module.exports = class TrackStreamer {
 
     const trackId = new ObjectId(httpRequest.params.id);
     const track = await this._searcher.searchById(trackId);
+    if (!track) throw new Gone('Track has been propably deleted and is no longer available.');
+
     const { length: trackFileSizeFromDb } = await this._dbClient.db()
       .collection('tracks.files')
       .findOne({ _id: track.fileId }, { projection: { length: 1 } });

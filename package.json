@@ -6,6 +6,7 @@
   "scripts": {
     "start": "DEBUG=tracksabout-api:*,express:router node src/App.js",
     "test": "mocha test-*/*.test.js",
+    "test-unit": "mocha test-unit/*.test.js",
     "debug": "DEBUG=tracksabout-api:* mocha test-*/*.test.js"
   },
   "repository": {
@@ -24,8 +25,10 @@
     "express": "^4.17.1",
     "express-fileupload": "^1.2.0",
     "http-errors": "^1.7.2",
+    "jsonwebtoken": "^8.5.1",
     "mongodb": "^4.1.2",
-    "music-metadata": "^7.5.0"
+    "music-metadata": "^7.5.0",
+    "node-fetch": "^2.6.6"
   },
   "devDependencies": {
     "dotenv": "^8.2.0",

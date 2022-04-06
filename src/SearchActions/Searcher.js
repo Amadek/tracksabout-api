@@ -102,8 +102,15 @@ module.exports = class Searcher {
       { $match: { 'albums._id': guid } },
       { $unwind: '$albums.tracks' },
       {
-        $project:
-        {
+        $lookup: {
+          from: 'users',
+          localField: 'albums.tracks.userId',
+          foreignField: '_id',
+          as: 'owners'
+        }
+      },
+      {
+        $project: {
           _id: '$albums._id',
           name: '$albums.name',
           artistName: '$name',
@@ -113,13 +120,15 @@ module.exports = class Searcher {
             _id: '$albums.tracks._id',
             fileId: '$albums.tracks.fileId',
             albumId: '$albums._id',
+            userId: '$albums.tracks.userId',
             title: '$albums.tracks.title',
             number: '$albums.tracks.number',
             duration: '$albums.tracks.duration',
             albumName: '$albums.tracks.albumName',
             artistName: '$albums.tracks.artistName',
             year: '$albums.tracks.year',
-            mimetype: '$albums.tracks.mimetype'
+            mimetype: '$albums.tracks.mimetype',
+            owner: { $first: '$owners' }
           },
           type: SearchResultType.album
         }

@@ -1,17 +1,18 @@
 const DbConnector = require('./DbConnector');
 const express = require('express');
-const TrackController = require('./Controllers/TrackController');
 const { NotFound } = require('http-errors');
 const Logger = require('./Logging/Logger');
 const Config = require('./Config');
 const Searcher = require('./SearchActions/Searcher');
-const SearchController = require('./Controllers/SearchController');
 const https = require('https');
 const fs = require('fs/promises');
 const assert = require('assert');
-const { TrackParser, TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory } = require('./FileActions');
+const { TrackParser, TrackPresenceValidator, TrackStreamer, ReversibleActionsFactory, TrackRemover } = require('./FileActions');
 const { BusboyActionsFactory } = require('./RequestActions');
 const TrackFieldsValidator = require('./FileActions/TrackFieldsValidator');
+const LoggerFactory = require('./Logging/LoggerFactory');
+const UserManager = require('./Users/UserManager');
+const { TrackController, SearchController, AuthController, UserController, JwtManagerHS256 } = require('./Controllers');
 
 class App {
   constructor (dbConnector, config, logger) {
@@ -37,11 +38,14 @@ class App {
     app.use(express.json());
     app.use((_req, res, next) => {
       res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', '*');
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
       next();
     });
-    app.use('/track', this._createTrackController(dbClient).route());
-    app.use('/search', this._createSearchController(dbClient).route());
+    app.use('/auth', this._createAuthController(dbClient, config).route());
+    app.use('/track', this._createTrackController(dbClient, config).route());
+    app.use('/search', this._createSearchController(dbClient, config).route());
+    app.use('/user', this._createUserController(dbClient, config).route());
     // Any other route should throw Not Found.
     app.use((_req, _res, next) => next(new NotFound()));
 
@@ -54,8 +58,20 @@ class App {
     return app;
   }
 
-  _createTrackController (dbClient) {
+  _createAuthController (dbClient, config) {
+    const loggerFactory = new LoggerFactory();
+    const jwtManager = new JwtManagerHS256(config, loggerFactory);
+    const userManager = new UserManager(dbClient, loggerFactory);
+
+    return new AuthController(config, jwtManager, userManager, loggerFactory);
+  }
+
+  _createTrackController (dbClient, config) {
+    const loggerFactory = new LoggerFactory();
+    const jwtManager = new JwtManagerHS256(config, loggerFactory);
+    const userManager = new UserManager(dbClient, loggerFactory);
     const trackParser = new TrackParser(new Logger());
+    const trackRemover = new TrackRemover(dbClient, userManager, config, loggerFactory);
     const trackStreamer = new TrackStreamer(new Searcher(dbClient, new Logger()), dbClient, new Logger());
     const trackFieldsValidator = new TrackFieldsValidator(new Logger());
     const trackPresenceValidator = new TrackPresenceValidator(dbClient, new Logger());
@@ -63,12 +79,22 @@ class App {
     const busboyActionsFactory = new BusboyActionsFactory(trackParser, trackFieldsValidator, trackPresenceValidator, reversibleActionsFactory);
     const searcher = new Searcher(dbClient, new Logger());
 
-    return new TrackController(busboyActionsFactory, trackStreamer, trackParser, searcher, new Logger());
+    return new TrackController(busboyActionsFactory, trackStreamer, trackParser, trackRemover, searcher, jwtManager, new Logger());
   }
 
-  _createSearchController (dbClient) {
+  _createSearchController (dbClient, config) {
+    const loggerFactory = new LoggerFactory();
     const searcher = new Searcher(dbClient, new Logger());
-    return new SearchController(searcher);
+    const jwtManager = new JwtManagerHS256(config, loggerFactory);
+
+    return new SearchController(searcher, jwtManager);
+  }
+
+  _createUserController (dbClient, config) {
+    const loggerFactory = new LoggerFactory();
+    const jwtManager = new JwtManagerHS256(config, loggerFactory);
+    const userManager = new UserManager(dbClient, loggerFactory);
+    return new UserController(jwtManager, userManager);
   }
 
   async _readCertFiles (certKeyPath, certFilePath) {

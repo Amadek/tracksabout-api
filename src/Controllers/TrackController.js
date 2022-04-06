@@ -1,26 +1,31 @@
 const assert = require('assert');
 const { Router } = require('express');
-const { BadRequest, NotFound } = require('http-errors');
+const { BadRequest, NotFound, Unauthorized, Gone } = require('http-errors');
 const Busboy = require('busboy');
 const { BusboyInPromiseWrapper, BusboyActionsFactory } = require('../RequestActions');
 const Logger = require('../Logging/Logger');
-const { ObjectId } = require('mongodb');
+const { ObjectId, MongoGridFSChunkError } = require('mongodb');
 const TrackStreamer = require('../FileActions/TrackStreamer');
-const { ITrackParser } = require('../FileActions');
+const { ITrackParser, TrackRemover } = require('../FileActions');
 const Searcher = require('../SearchActions/Searcher');
+const JwtManagerHS256 = require('./JwtManagerHS256');
 
 module.exports = class TrackController {
   /**
    * @param {BusboyActionsFactory} busboyActionsFactory
    * @param {TrackStreamer} trackStreamer
    * @param {ITrackParser} trackParser
+   * @param {TrackRemover} trackRemover
    * @param {Searcher} searcher
+   * @param {JwtManagerHS256} jwtManager
    * @param {Logger} logger
    */
-  constructor (busboyActionsFactory, trackStreamer, trackParser, searcher, logger) {
+  constructor (busboyActionsFactory, trackStreamer, trackParser, trackRemover, searcher, jwtManager, logger) {
     assert.ok(busboyActionsFactory instanceof BusboyActionsFactory); this._busboyActionsFactory = busboyActionsFactory;
     assert.ok(trackStreamer instanceof TrackStreamer); this._trackStreamer = trackStreamer;
     assert.ok(trackParser instanceof ITrackParser); this._trackParser = trackParser;
+    assert.ok(trackRemover instanceof TrackRemover); this._trackRemover = trackRemover;
+    assert.ok(jwtManager instanceof JwtManagerHS256); this._jwtManager = jwtManager;
     assert.ok(logger instanceof Logger); this._logger = logger;
     assert.ok(searcher instanceof Searcher); this._searcher = searcher;
     this._busboyWrapper = new BusboyInPromiseWrapper(new Logger());
@@ -29,6 +34,7 @@ module.exports = class TrackController {
   route () {
     const router = Router();
     router.post('/', this._postTrack.bind(this));
+    router.delete('/:id', this._deleteTrack.bind(this));
     router.post('/validate', this._postValidateTrack.bind(this));
     router.get('/stream/:id', this._getStreamTrack.bind(this));
     router.get('/cover/:id', this._getAlbumCover.bind(this));
@@ -45,7 +51,9 @@ module.exports = class TrackController {
     assert.ok(next);
 
     try {
-      const streamReaderToUploadTrack = this._busboyActionsFactory.createStreamReaderToUploadTrack();
+      const token = this._validateToken(req);
+
+      const streamReaderToUploadTrack = this._busboyActionsFactory.createStreamReaderToUploadTrack(token.gitHubUserId);
       const uploadedTrackIds = await this._busboyWrapper.handle(req, new Busboy({ headers: req.headers }), streamReaderToUploadTrack);
       this._logger.log(this, `Returned fileIds = ${JSON.stringify(uploadedTrackIds)} of uploaded tracks.`);
 
@@ -59,6 +67,32 @@ module.exports = class TrackController {
 
       if (knownErrorMessages.some(errorMessage => error.message.includes(errorMessage))) return next(new BadRequest(error.message));
 
+      next(error);
+    }
+  }
+
+  /**
+   * Uploads new track.
+   * @param {import('express').Request} req
+   * @param {import('express').Response} res
+   * @param {import('express').NextFunction} next
+   */
+  async _deleteTrack (req, res, next) {
+    assert.ok(req);
+    assert.ok(res);
+    assert.ok(next);
+
+    try {
+      const token = this._validateToken(req);
+
+      if (!req.params.id || !ObjectId.isValid(req.params.id)) throw new BadRequest('Track Id is empty or invalid!');
+      const trackId = new ObjectId(req.params.id);
+
+      const removeTrackResult = await this._trackRemover.remove(trackId, token.gitHubUserId);
+      if (!removeTrackResult.success) throw new BadRequest(removeTrackResult.message);
+
+      res.json(removeTrackResult);
+    } catch (error) {
       next(error);
     }
   }
@@ -95,6 +129,7 @@ module.exports = class TrackController {
     try {
       await this._trackStreamer.stream(req, res);
     } catch (error) {
+      if (error instanceof MongoGridFSChunkError) next(new Gone('Track has been propably deleted and is no longer available.'));
       next(error);
     }
   }
@@ -124,5 +159,14 @@ module.exports = class TrackController {
     } catch (error) {
       next(error);
     }
+  }
+
+  _validateToken (req) {
+    if (!req.query.jwt) throw new Unauthorized('JWT token not provided.');
+
+    const token = this._jwtManager.parse(req.query.jwt, req.ip);
+    if (!token) throw new Unauthorized('JWT token cannot be parsed and verified.');
+
+    return token;
   }
 };
