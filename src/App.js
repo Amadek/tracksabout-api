@@ -30,7 +30,9 @@ class App {
       key: certFiles.key,
       cert: certFiles.cert
     }, expressApp)
-      .listen(config.appPort, () => this._logger.log(this, `Listening on HTTPS, port = ${config.appPort}...`));
+      // We need to set '0.0.0.0' to access Express app with custom domain like api.example.com (etc/hosts magic) on other remote apps,
+      // otherwise - is ONLY accessible via localhost alias.
+      .listen(config.appPort, '0.0.0.0', () => this._logger.log(this, `Listening on HTTPS, port = ${config.appPort}...`));
   }
 
   _createExpressApp (dbClient) {

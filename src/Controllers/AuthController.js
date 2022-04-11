@@ -45,7 +45,7 @@ module.exports = class AuthController {
 
       const authorizeUrl = new URL('https://github.com/login/oauth/authorize');
       authorizeUrl.searchParams.append('client_id', req.query.client_id.toString());
-      authorizeUrl.searchParams.append('redirect_uri', 'https://' + internalRedirectUrl.href);
+      authorizeUrl.searchParams.append('redirect_uri', internalRedirectUrl.href);
 
       this._logger.log('Redirecting to: ' + authorizeUrl.href);
 
@@ -91,7 +91,12 @@ module.exports = class AuthController {
    * @returns {string} Url
    */
   _getBaseUrl (req) {
-    return req.headers.host + req.baseUrl;
+    // X-Server-Name is a custom header set in NGINX to pass the domain name which is set on API.
+    // Otherwise value from req.headers.host points to localhost...
+    const serverName = req.headers['x-server-name'].toString() ?? req.headers.host;
+    const serverNameUrl = new URL('https://' + serverName);
+    serverNameUrl.pathname = req.baseUrl;
+    return serverNameUrl.href;
   }
 
   async _getAccessToken (clientId, requestToken) {

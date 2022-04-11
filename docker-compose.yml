@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  tracksabout-api:
+    build: .
+    ports:
+      - "4000:4000"
+    volumes:
+      # Maps cert files from server in app to use HTTPS.
+      - ../certs:/certs
+    # WARNING! ENV variables are read from .env file which has to be copied to container - do not ignore .env in .dockerignore!
