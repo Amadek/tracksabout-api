@@ -93,7 +93,7 @@ module.exports = class AuthController {
   _getBaseUrl (req) {
     // X-Server-Name is a custom header set in NGINX to pass the domain name which is set on API.
     // Otherwise value from req.headers.host points to localhost...
-    const serverName = req.headers['x-server-name'].toString() ?? req.headers.host;
+    const serverName = req.headers['x-server-name']?.toString() ?? req.headers.host;
     const serverNameUrl = new URL('https://' + serverName);
     serverNameUrl.pathname = req.baseUrl;
     return serverNameUrl.href;
