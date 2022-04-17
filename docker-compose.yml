@@ -1,6 +1,7 @@
 version: "3.9"
 services:
   tracksabout-api:
+    container_name: 'tracksabout-api'
     # We need to setup ENV in container, --env-file sets variables only in docker-compose context.
     # Use like: ENV_FILE=.env.production docker-compose build
     env_file: ${ENV_FILE}
@@ -11,3 +12,6 @@ services:
       # Maps cert files from server in app to use HTTPS.
       - /data/certs:/data/certs
     # WARNING! ENV variables are read from .env file which has to be copied to container - do not ignore .env in .dockerignore!
+networks:
+  default:
+    name: tracksabout-network
