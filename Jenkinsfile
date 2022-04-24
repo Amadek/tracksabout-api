@@ -11,7 +11,7 @@ node {
 
   docker.withRegistry("http://${DOCKER_REGISTRY_URL}") {
     stage('Build') {
-      git url: 'https://github.com/Amadek/tracksabout-api', branch: 'docker'
+      checkout scm
       container = docker.build(containerName)
     }
 
