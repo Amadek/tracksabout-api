@@ -24,14 +24,20 @@ class App {
   async run () {
     const dbClient = await this._dbConnector.connect();
     const expressApp = this._createExpressApp(dbClient);
-    const certFiles = await this._readCertFiles(this._config.certKeyPath, this._config.certFilePath);
 
+    // If we don't have a SSL cert, we listen on HTTP.
+    if (!this._config.certKeyPath) {
+      // We need to set '0.0.0.0' to access Express app with custom domain like api.example.com (etc/hosts magic) on other remote apps,
+      // otherwise - is ONLY accessible via localhost alias.
+      expressApp.listen(config.appPort, '0.0.0.0', () => this._logger.log(this, `Listening on HTTP, port = ${config.appPort}...`));
+      return;
+    }
+
+    const certFiles = await this._readCertFiles(this._config.certKeyPath, this._config.certFilePath);
     https.createServer({
       key: certFiles.key,
       cert: certFiles.cert
     }, expressApp)
-      // We need to set '0.0.0.0' to access Express app with custom domain like api.example.com (etc/hosts magic) on other remote apps,
-      // otherwise - is ONLY accessible via localhost alias.
       .listen(config.appPort, '0.0.0.0', () => this._logger.log(this, `Listening on HTTPS, port = ${config.appPort}...`));
   }
 
