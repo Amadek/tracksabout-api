@@ -31,6 +31,6 @@ node {
     try {
       sh 'docker stop tracksabout-api'
     } catch (err) { }
-    sh "docker run --name tracksabout-api --rm --detach ${containerArgs} ${DOCKER_REGISTRY_URL}/${containerName}"
+    sh "docker run --name tracksabout-api --rm --detach --network tracksabout-network ${containerArgs} ${DOCKER_REGISTRY_URL}/${containerName}"
   }
 }
